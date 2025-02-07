@@ -1,0 +1,29 @@
+<div class="card">
+  <div class="card-body d-flex flex-column align-items-center">
+    {{podium.battLevel}}% {{podium.battVoltage}}mV {{podium.isCharging?'':'Not'}} Charging
+    @let npc = namePlateColor;
+    <div
+      [ngClass]="npc.isClass ? npc.color : null"
+      [ngStyle]="{ 'background-color': !npc.isClass ? npc.color : null }"
+      class="podium border border-black border-5 rounded-3 w-100 h-100 d-flex align-items-center justify-content-center"
+    >
+      <h4 class="text-clamp-1 m-0 text-center">
+        {{ podium?.title ?? defaultTitle + " " + readableIndex }}
+      </h4>
+    </div>
+    @let s = status;
+    <div class="text-center tag" [ngClass]="'bg-' + s.color">
+      {{ s.title | titlecase }}
+    </div>
+    <div>
+      <button
+        type="button"
+        class="btn btn-secondary"
+        (click)="onSpotlight.emit()"
+      >
+        Spotlight
+      </button>
+    </div>
+    <h1></h1>
+  </div>
+</div>

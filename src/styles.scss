@@ -1,1 +1,147 @@
 /* You can add global styles to this file, and also import other style files */
+/* Importing additional CSS helper files */
+/* Importing Bootstrap SCSS file. */
+//@use "bootstrap/scss/bootstrap";
+//IMPORT VIA angular.json
+/* You can add global styles to this file, and also import other style files */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+// Import functions first (required)
+//@use "functions";
+
+// Import required variables and mixins
+/* @use "variables";
+@use "mixins"; */
+
+/* @include media-breakpoint-up(xxl) {
+
+} */
+:root {
+  --bs-body-font-family: 'Poppins', sans-serif!important;
+  --fullscreenH: calc(100vh - var(--navbarH));
+  --navbarH: 56px;
+  --color-primary: #c1dafe;
+}
+router-outlet + *{
+  padding-bottom: 100px;
+}
+.html,
+body,
+app-root {
+  min-height: 100vh !important;
+  height: -webkit-fill-available;
+  font-size: 0.9em;
+}
+.form-group.required .control-label:after, .form-label.required:after, .required:after{
+  content:"*";
+  color:red;
+}
+.card {
+  color: var(--bs-emphasis-color) !important;
+}
+body {
+  min-height: 100vh;
+  margin: 0;
+  min-height: -webkit-fill-available;
+}
+.tag-sm {
+  text-transform: uppercase;
+  font-size: 0.625rem;
+}
+iframe body {
+  background-color: red;
+}
+@for $i from 1 through 10 {
+  .text-clamp-#{$i} {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline;
+    display: -webkit-box;
+    text-wrap: wrap;
+    line-clamp:$i; /* Standard property */
+    -webkit-line-clamp: $i; /* WebKit-based browsers */
+    -webkit-box-orient: vertical;
+    white-space: break-spaces;
+    max-width: 100%;
+    word-break: break-all;
+  }
+}
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.tag {
+  display: inline-block;
+  border-radius: 0.25rem;
+  font-weight: 700;
+  padding: 0 0.375rem;
+  margin: 0 0.175rem 0.275rem 0;
+  background-color: rgb(199 200 201 / 33%);
+}
+.fit-cover {
+  object-fit: cover !important;
+}
+.fit-contain {
+  object-fit: contain !important;
+}
+.fit-scale-down {
+  object-fit: scale-down !important;
+}
+.fit-none {
+  object-fit: none !important;
+}
+
+//REQUIRED, hoverable dropdown will not work
+.dropdown-menu {
+  margin-left: -1px !important;
+  margin-right: -1px !important;
+}
+
+.fullscreenH{
+  height: var(--fullscreenH);
+}
+.fullscreen {
+  min-height: var(--fullscreenH);
+  min-width: 100%;
+}
+
+app-home {
+  min-height: var(--fullscreenH);
+}
+
+.wrap {
+  white-space: pre-wrap; /* CSS3 */
+  white-space: -moz-pre-wrap; /* Firefox */
+  white-space: -pre-wrap; /* Opera <7 */
+  white-space: -o-pre-wrap; /* Opera 7 */
+  word-wrap: break-word; /* IE */
+}
+
+//END
+
+
+
+html, body { height: 100%; }
+//TOOD: migrate to speperate class, use theme of apexcharts instead
+.apexcharts-legend-marker,.apexcharts-legend-text{
+  color: initial !important;
+}
+apx-chart text{
+  fill: var(--bs-light-text-emphasis);;
+}
+apx-chart .apexcharts-tooltip-title{
+  background: var(--bs-body-bg) !important;
+}apx-chart .apexcharts-tooltip{
+  background: var(--bs-body-bg) !important;
+  color: initial !important;
+  border-color: var(--bs-border-color);
+}
+

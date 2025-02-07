@@ -1,0 +1,24 @@
+:host {
+  display: block;
+}
+
+.podium {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 16/4;
+}
+[class*="bg-"] {
+  --bs-heading-color: white;
+  color: white !important;
+
+  &.bg-warning,
+  &.bg-info {
+    --bs-heading-color: black;
+    color: black !important;
+  }
+}
+.card-body {
+  > *{
+    margin-bottom: 0.5rem;
+  }
+}

@@ -1,0 +1,6 @@
+/* $custom-colors: (
+  "custom-color": #900
+);
+@use "bootstrap/scss/_variables.scss";
+// Merge the maps
+$theme-colors: map-merge($theme-colors, $custom-colors); */
