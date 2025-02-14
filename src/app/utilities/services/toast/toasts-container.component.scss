@@ -1,0 +1,29 @@
+.bg-danger{
+    color: white!important;
+}
+.meter { 
+    height: 5px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: #f3efe6;
+    overflow: hidden;
+    width: 100%;
+
+}
+
+.meter span {
+    display: block;
+    height: 100%;
+}
+
+.progress {
+    background-color: #e4c465;
+    animation: progressBar linear;
+    animation-fill-mode:both; 
+}
+
+@keyframes progressBar {
+  0% { width: 0; }
+  100% { width: 100%; }
+}

@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { ReceiveCommands, SendCommands, SerialService } from './serial.service';
 import { filter, firstValueFrom } from 'rxjs';
-import { dnrSeverity, LEDState, Podium } from '../values/podium.values';
+import { dnrSeverity, LEDState, Podium } from '../../values/podium.values';
+import { Router } from '@angular/router';
 
 export interface Command {
   command: SendCommands | ReceiveCommands;
@@ -15,23 +16,26 @@ export class GameManagerService {
   podiumsConnected: boolean;
   podiums: Map<number, Podium> = new Map();
   buttonPlacing: number[] = [];
-  constructor(private serial: SerialService) {
-    serial.stream.subscribe((s) => {
-      this.processCommand(s);
-    });
+  constructor(private serial: SerialService, private router: Router) {
     this.init();
   }
-  async init() {
+  private async init() {
     await firstValueFrom(
-      this.serial.connectedDevice.pipe(filter((s) => s == true))
+      this.serial.connectionStatus.pipe(filter((s) => s == 'connected'))
     );
-    this.serial.write(SendCommands.Summary);
-    this.serial.connectedDevice.subscribe((s) => {
-      if (this.podiumsConnected != s && s == true) {
-        this.serial.write(SendCommands.Summary);
-      }
-      this.podiumsConnected = s;
+    this.serial.stream.subscribe((s) => {
+      if (!s) return;
+      this.processCommand(s);
     });
+    this.serial.connectionStatus.subscribe((c) => {
+      if (c == 'disconnected') {
+        this.router.navigate(['/']);
+      }
+    });
+    this.sendSummary();
+  }
+  sendSummary() {
+    this.serial.write(SendCommands.Summary);
   }
   swapPodium(podiumA: number, podiumB: number) {
     if (podiumA == podiumB) return;
@@ -147,6 +151,7 @@ export class GameManagerService {
     const index = +cmd[0];
     const placing = +cmd[1];
     this.buttonPlacing[index] = placing;
+    this.setToAllPodiums({ ledState: LEDState.OFF }, { exclude: [index] });
   }
   podiumAdded(payload: string) {
     const cmd = payload.split(',');

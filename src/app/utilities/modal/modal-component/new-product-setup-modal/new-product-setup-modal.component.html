@@ -1,0 +1,74 @@
+<simple-modal-header></simple-modal-header>
+<async [overlay]="true" [status]="loading ? 'loading' : 'loaded'">
+  <div class="modal-body">
+    <async [data]="productMasterList">
+      <div class="me-auto mb-3" style="display: flex; width: 100%">
+        <div class="input-group flex-nowrap" style="width: 100%">
+          <span class="input-group-text" id="addon-wrapping"><i class="fas fa-search"></i></span>
+          <!-- [filters]="userType!=null?'role:'+userType:null" -->
+          <!-- (hits)="algoliaHits = $event" -->
+          <input
+            class="form-control"
+            [(ngModel)]="search"
+            id="searchbox"
+            type="text"
+            placeholder="Find a Product"
+            aria-label="Find a Product"
+            aria-describedby="addon-wrapping"
+          />
+          <button
+            class="btn btn-primary dropdown-toggle dropup"
+            type="button"
+            data-bs-auto-close="outside"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            <i class="fa-solid fa-filter"></i>
+            <span *ngIf="filterCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+              {{ filterCount }}
+              <span class="visually-hidden">unread messages</span>
+            </span>
+          </button>
+          <div class="dropdown-menu">
+            <app-filter-product-menu [narrow]="true" [(filter)]="tire" (filterChange)="updateFilter()"></app-filter-product-menu>
+          </div>
+        </div>
+      </div>
+
+      <async [data]="searchMode ? prodMLSearch : productMasterList">
+        <div *ngIf="(searchMode ? prodMLSearch : productMasterList) | async as masterList">
+          <div style="overflow-y: auto; max-height: 60vh">
+            <div
+              *ngFor="let requestedItem of masterList | keyvalue"
+              class="bg-body-secondary rounded-2 mb-3"
+              style="cursor: pointer"
+              (click)="tireSelect(requestedItem.value.tire)"
+            >
+              <a *ngVar="requestedItem.value.tire as tire" class="d-flex p-3 w-100 link">
+                <div class="d-flex w-100">
+                  <img
+                    [src]="tire.photoURL"
+                    defaultImage="tire"
+                    style="aspect-ratio: 1/1; min-height: 50px; max-height: 50px; object-fit: contain"
+                  />
+                  <div class="d-flex flex-column justify-content-center ps-2">
+                    <h6>{{ tire.name }}</h6>
+                    <p>
+                      <small>{{ tire.sku }}</small>
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <p class="m-0 text-end" *ngVar="getSpecList(tire) as tirespec">
+                    <a class="tag" *ngFor="let tag of tirespec" style="color: var(--tag-default-color)">{{ tag }}</a>
+                  </p>
+                </div>
+              </a>
+            </div>
+          </div>
+        </div>
+      </async>
+    </async>
+  </div>
+  <simple-modal-footer></simple-modal-footer>
+</async>

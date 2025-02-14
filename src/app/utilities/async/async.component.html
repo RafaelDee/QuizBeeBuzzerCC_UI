@@ -1,0 +1,19 @@
+<div style="position: relative; top: 0; bottom: 0" class="w-100">
+  <div
+    style="width: 100%; height: 100%; pointer-events: none; z-index: 1"
+    [ngStyle]="{
+      display: status != 'loaded' || overlay ? 'block' : 'none',
+      position: overlay ? 'absolute' : 'unset',
+      'pointer-events': status == 'loading' || status == 'notFound' || status == 'error' || status == 'empty'?'all': 'none'
+    }"
+  >
+    <ng-template async></ng-template>
+  </div>
+  <ng-container *ngIf="status == 'loaded' || overlay">
+    <ng-content></ng-content>
+  </ng-container>
+</div>
+
+<!-- TODO: problem with how ng-content and ngIf works, will show the content even its false on init and will cause read property error on load -->
+<!-- try passing the data on  the ng-content rather than the encapsulation -->
+<!-- make it a basic display component, will not controll the show/hide of the loaded component -->

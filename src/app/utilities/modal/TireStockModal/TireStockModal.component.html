@@ -1,0 +1,23 @@
+<simple-modal-header title="Add New Stock"></simple-modal-header>
+<div class="modal-body">
+  <div class="row form m-0 g-1">
+    <app-form-field
+      class="pb-3"
+      #field
+      *ngFor="let template of tireStockForm; let i = index"
+      [inputField]="template"
+      [breakpoints]="template.width"
+      [value]="stock?.[template.id]"
+      (valueChange)="setData(template.id, $event)"
+    ></app-form-field>
+  </div>
+</div>
+
+<simple-modal-footer
+  positiveTitle="Add"
+  negativeTitle="Close"
+  (onPositiveClick)="onSubmit()"
+  [positiveParams]="{ dismiss: false, color: 'success' }"
+  [negativeParams]="{ dismiss: true }"
+  (onNegativeClick)="onCancel()"
+></simple-modal-footer>

@@ -1,1 +1,10 @@
-<p>setup works!</p>,
+@let connStatus = serialServ.connectionStatus|async;
+<p>{{ connStatus | titlecase }}</p>
+setup
+<button
+  class="btn btn-primary"
+  [disabled]="connStatus == 'connecting'"
+  (click)="initialize()"
+>
+  {{connStatus == 'connecting'?'Connecting...':'Connect'}}
+</button>

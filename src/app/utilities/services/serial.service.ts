@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { EventEmitter, Injectable } from '@angular/core';
 import {
   BehaviorSubject,
   filter,
@@ -6,10 +6,11 @@ import {
   firstValueFrom,
   map,
   Observable,
+  Subscription,
   tap,
 } from 'rxjs';
 import { Command } from './game-manager.service';
-import { asyncDelay } from '../utilities/common-utils';
+import { asyncDelay } from '../common-utils';
 var defaultSerialOptions: SerialOptions = {
   baudRate: 115200,
   dataBits: 8,
@@ -25,7 +26,7 @@ export interface SerialWriteQueue {
   payload?: string;
   idempotencyToken: number;
 }
-const pairKey = 'c8e89336-1cbb-4028-b1fe-0079c00d6b4f';
+const pairKey: string = 'c8e89336-1cbb-4028-b1fe-0079c00d6b4f';
 const filters = [{ usbVendorId: 4292, usbProductId: 60000 }];
 /**DO NOT JUST COPY, COMMANDS ARE INVERTED ON ESP32 */
 export enum SendCommands {
@@ -39,6 +40,8 @@ export enum SendCommands {
   SuspenseGame,
   SpotLightPodium,
   SwapPodium,
+  PodiumBrightness,
+  PodiumColor,
 }
 const sendCommandsList = [
   'Acknowledge',
@@ -85,7 +88,7 @@ class DeviceTimeoutError extends Error {
   override message: string = 'Device took too long to respond correctly ';
 }
 class SerialDevice {
-  private textEncoder: TextEncoderStream | null = null;
+  textEncoder = new TextEncoderStream();
   private textDecoder: TextDecoderStream | null = null;
   private writer: WritableStreamDefaultWriter<string> | null = null;
   private reader: ReadableStreamDefaultReader<string> | null = null;
@@ -93,17 +96,33 @@ class SerialDevice {
   private readableStreamClosed: Promise<void> | null = null;
   private stream = new BehaviorSubject<string>(null);
   private isReading = false;
-
-  constructor(public port: SerialPort) {}
-
+  private disconnected = false;
+  public ondisconnect: () => void;
+  constructor(public port: SerialPort) {
+    const bc = new BroadcastChannel("test_channel");
+    port.ondisconnect = () => this.disconnect();
+  }
+  disconnect(){
+    if(this.disconnected)return;
+    this.disconnected = true;
+    this.ondisconnect?.call(null)
+  }
   async open(options: SerialOptions = defaultSerialOptions) {
     try {
+      this.stream = new BehaviorSubject<string>(null);
       // First ensure we're fully closed
-      await this.close();
+      try {
+        await this.close();
+      } catch (err) {
+        console.warn(err);
+      }
 
       // Then open the port
-      await this.port.open(options);
-
+      try {
+        await this.port.open(options);
+      } catch (err) {
+        await this.close();
+      }
       if (!this.port.readable || !this.port.writable) {
         throw new PortNotConnectedError();
       }
@@ -126,14 +145,19 @@ class SerialDevice {
 
       // Start reading loop
       this.isReading = true;
+      this.disconnected = false;
+      await asyncDelay(200);
       this.readLoop();
     } catch (error) {
       console.error('Failed to open port:', error);
       await this.close();
+      /* if (error instanceof DOMException && error.code === DOMException.NETWORK_ERR){
+
+      } */
+
       throw error;
     }
   }
-
   private async readLoop() {
     let buffer = '';
 
@@ -164,6 +188,7 @@ class SerialDevice {
     }
     try {
       await this.writer.write(chunk);
+      await asyncDelay(10);
     } catch (error) {
       console.error('Write error:', error);
       throw error;
@@ -179,6 +204,8 @@ class SerialDevice {
         await this.writer.close().catch(() => {});
         this.writer.releaseLock();
         this.writer = null;
+      } else {
+        console.warn('Missing writer');
       }
 
       // Release reader
@@ -186,6 +213,8 @@ class SerialDevice {
         await this.reader.cancel().catch(() => {});
         this.reader.releaseLock();
         this.reader = null;
+      } else {
+        console.warn('Missing reader');
       }
 
       // Wait for streams to close
@@ -206,9 +235,9 @@ class SerialDevice {
       if (this.port?.readable || this.port?.writable) {
         await this.port.close().catch(() => {});
       }
+      this.disconnect();
     } catch (error) {
       console.error('Error during close:', error);
-      throw error;
     }
   }
 
@@ -216,7 +245,12 @@ class SerialDevice {
     return this.stream.asObservable();
   }
 }
-
+const connectionStatusList = [
+  'connected',
+  'connecting',
+  'disconnected',
+] as const;
+export type ConnectionStatus = (typeof connectionStatusList)[number];
 @Injectable({
   providedIn: 'root',
 })
@@ -225,51 +259,78 @@ export class SerialService {
   stream = this._stream.asObservable();
   serialSupport = new BehaviorSubject<boolean>(null);
   connectedSerialDevice: SerialDevice;
-  connectedDevice = new BehaviorSubject<boolean>(undefined);
+  connectionStatus = new BehaviorSubject<ConnectionStatus>('disconnected');
   private serial: Serial;
-  constructor() {
-    this.initializeSerial();
-  }
+  constructor() {}
   async initializeSerial() {
-    this.serialSupport.next('serial' in navigator);
-    if (!('serial' in navigator)) return;
+    if (this.connectionStatus.value == 'connected')
+      throw new SerialAlreadyConnected();
+    this.connectionStatus.next('connecting');
+    const serialSupported = 'serial' in navigator;
+    this.serialSupport.next(serialSupported);
+    if (!serialSupported) return;
     this.serial = await navigator.serial;
-    this.connectToDevice();
+
+    await this.connectToDevice();
   }
   async disconnect() {
     await this.connectedSerialDevice.close();
-    this.connectedDevice.next(false);
+    //use different listener, prob use connectedSerialDevice
+    this.connectionStatus.next('disconnected');
   }
+
+  async requestPort() {
+    await this.serial.requestPort();
+  }
+  /**@Throwable */
   async connect() {
-    await this.connectedSerialDevice.open();
-    this.connectedDevice.next(true);
+    if (this.connectionStatus.value == 'connecting')
+      throw new SerialConnecting();
+    await this.initializeSerial();
   }
+  sub: Subscription;
   async connectToDevice() {
     const ports = await this.serial.getPorts({ filters });
+    console.log(`available ports: ${ports.length}`);
     const serialDevices = await Promise.all(
       ports?.map((p) => new SerialDevice(p))
     );
-    const testConnections = (
-      await Promise.all(serialDevices?.map((p) => this.testDevice(p)))
-    ).filter((f) => f.status);
-    console.log(`successful devices: ${testConnections.length}`);
-    const validConncetion = testConnections.pop();
-    const hasConnection = validConncetion != null;
-    this.connectedDevice.next(hasConnection);
-    if (!hasConnection) throw new NoValidConnections();
-    this.connectedSerialDevice = validConncetion.device;
-    validConncetion.device.read().subscribe(async (r) => {
-      const command = this.parseCommand(r);
-      if (!command) return;
-      console.log(r);
-      await this.sendAcknowledge(
-        validConncetion.device,
-        command.idempotencyToken
-      );
-      if (command.command == ReceiveCommands.Acknowledge)
-        this.acknowledgeReceivedMessage(command.idempotencyToken);
-      this._stream.next(command);
-    });
+    try {
+      const testConnections = (
+        await Promise.all(serialDevices?.map((p) => this.testDevice(p)))
+      ).filter((f) => {
+        return f.status;
+      });
+      console.log(`successful devices: ${testConnections.length}`);
+      const validConncetion = testConnections.pop();
+      const hasConnection = validConncetion != null;
+
+      if (!hasConnection) throw new NoValidConnections();
+      this.connectedSerialDevice = validConncetion.device;
+      this.connectedSerialDevice.ondisconnect = () => {
+        this.disconnect();
+      };
+      this.sub?.unsubscribe();
+      this.sub = validConncetion.device.read().subscribe(async (r) => {
+        const command = this.parseCommand(r);
+        if (!command) return;
+        await this.sendAcknowledge(
+          validConncetion.device,
+          command.idempotencyToken
+        );
+        if (command.command == ReceiveCommands.Acknowledge)
+          this.acknowledgeReceivedMessage(command.idempotencyToken);
+        this._stream.next(command);
+      });
+      this.connectionStatus.next('connected');
+    } catch (err) {
+      this.connectionStatus.next('disconnected');
+      this.sub?.unsubscribe();
+      for (let device of serialDevices) {
+        device.close();
+      }
+    }
+
     /* const hasConnections = testConnections.filter((f) => f.status == true);
     const validConncetion = hasConnections.pop();
     this.connectedDevice.next(validConncetion != null);
@@ -300,11 +361,11 @@ export class SerialService {
     payload: string;
   } {
     if (stream == null) return null;
-    console.log(`parsing command: ${stream}`);
-    if (stream == null) return null;
+    console.log('parsing:' + stream);
     if (!stream.charAt(0).match('/')) return null;
     const parseKey = stream.substring(1).split(':', 2);
     if (parseKey.length != 2) {
+      console.log(`${stream}`);
       console.error('invalid command');
       return null;
     }
@@ -317,7 +378,10 @@ export class SerialService {
     const split = cmd.split(' ', 2);
     if (split == null || split.length <= 0) return null;
     const command = Number.parseInt(split.shift());
-    if (Number.isNaN(command)) return null;
+    if (Number.isNaN(command)) {
+      console.log(`${stream}`);
+      return null;
+    }
     console.log(`command: ${receiveCommandsList[command]} ${split.join(' ')}`);
     return { command: command, idempotencyToken, payload: split.join(' ') };
   }
@@ -335,55 +399,56 @@ export class SerialService {
   async testDevice(
     device: SerialDevice
   ): Promise<{ device: SerialDevice; status: boolean }> {
-    return new Promise<{ device: SerialDevice; status: boolean }>(
-      async (resolve) => {
-        try {
-          const timeoutId = setTimeout(() => {
-            console.log('TIMED OUT');
-            throw new DeviceTimeoutError();
-          }, 1000);
+    let sub: Subscription;
+    try {
+      return await Promise.race<{ device: SerialDevice; status: boolean }>([
+        new Promise(async (_, reject) => {
+          await asyncDelay(5000);
+          reject(new DeviceTimeoutError());
+        }),
+        new Promise(async (resolve) => {
           await device.open();
           //wait for the device to be ready
           const readCommands = device
             .read()
             .pipe(map((m) => this.parseCommand(m)));
-          const subscription = readCommands.subscribe();
-          const pairCommand = await firstValueFrom(
-            readCommands.pipe(
-              first((f) => {
-                if (f == null) return false;
-                /**TODO: Rewrite protocol. UI sends first then CC */
-                if (f.command == ReceiveCommands.Acknowledge) {
-                  (async () => {
-                    this.acknowledgeReceivedMessage(f.idempotencyToken);
-                  })();
-                }
-                if (f.command == ReceiveCommands.Ready) {
-                  (async () => {
-                    await this.sendAcknowledge(device, f.idempotencyToken);
-                    await this.writeToDevice(device, SendCommands.Pair);
-                  })();
-                }
-                if (f.command == ReceiveCommands.Pair) {
-                  return f.payload.match(pairKey) != null;
-                }
-                return false;
-              })
-            )
-          );
-          subscription.unsubscribe();
-          clearTimeout(timeoutId);
-          await this.sendAcknowledge(device, pairCommand.idempotencyToken);
-          resolve({ device, status: true });
-          return;
-        } catch (err) {
-          /* port.close(); */
-          device.close();
-          console.error(err);
-          resolve({ device, status: false });
-        }
-      }
-    );
+          sub = readCommands.subscribe(async (f) => {
+            if (f == null) return;
+            /**TODO: Rewrite protocol. UI sends first then CC */
+            if (f.command == ReceiveCommands.Acknowledge) {
+              await (async () => {
+                this.acknowledgeReceivedMessage(f.idempotencyToken);
+              })();
+            }
+            if (f.command == ReceiveCommands.Ready) {
+              console.warn('PAIR RECEIVED');
+              await (async () => {
+                await this.sendAcknowledge(device, f.idempotencyToken);
+                await this.writeToDevice(device, SendCommands.Pair);
+              })();
+            }
+            if (f.command == ReceiveCommands.Pair) {
+              const test =
+                f.payload?.trim()?.match(pairKey?.trim()) != null ||
+                `${f.payload?.trim()}` == `${pairKey?.trim()}`;
+              if (test) {
+                await this.sendAcknowledge(device, f.idempotencyToken);
+                resolve({ device, status: true });
+                sub?.unsubscribe();
+              } else {
+                throw new Error('Invalid Key');
+              }
+            }
+          });
+        }),
+      ]);
+    } catch (err) {
+      sub?.unsubscribe();
+      /* port.close(); */
+      await device.close();
+      console.error(err);
+      return { device, status: false };
+    }
   }
   acknowledgeReceivedMessage(idempotencyToken: number) {
     this.serialWriteQueue.delete(idempotencyToken);
@@ -418,13 +483,21 @@ export class SerialService {
     const wr = `${idempotencyToken}:${commandChar}\n`;
 
     this.serialWriteQueue.add(idempotencyToken);
+    let attempts = 0;
     do {
       console.log(
-        `Wiriting to device: ${idempotencyToken}: ${sendCommandsList[command]} ${payload}`
+        `Wiriting to device: "${wr}" or ${idempotencyToken}: ${
+          sendCommandsList[command]
+        } ${payload != null ? payload : ''}`
       );
       await device.write(wr);
-      await asyncDelay(30);
-    } while (retry && this.serialWriteQueue.has(idempotencyToken));
+      await asyncDelay(100);
+      attempts++;
+    } while (
+      retry &&
+      this.serialWriteQueue.has(idempotencyToken) &&
+      attempts <= 3
+    );
   }
 
   listenToDevice(port: SerialPort): {
@@ -478,6 +551,8 @@ export class SerialService {
     }
   }
 }
+export class SerialAlreadyConnected extends Error {}
+export class SerialConnecting extends Error {}
 export class NoValidConnections extends Error {}
 /* const listener = this.listenToDevice(port);
 const command = await firstValueFrom(

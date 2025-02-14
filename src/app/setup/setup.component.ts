@@ -1,11 +1,15 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { Router } from '@angular/router';
+import { SerialService } from '../utilities/services/serial.service';
+import { CommonModule } from '@angular/common';
+import { filter, first, firstValueFrom } from 'rxjs';
 /**TODO:
  * detect browser WebSerial support
  *
  */
 @Component({
   selector: 'app-setup',
-  imports: [],
+  imports: [CommonModule],
   templateUrl: './setup.component.html',
   styles: `
     :host {
@@ -15,4 +19,17 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SetupComponent {
+  constructor(public serialServ: SerialService, private router: Router) {
+    this.initialize();
+    this.waitForConnection();
+  }
+  async waitForConnection() {
+    await firstValueFrom(
+      this.serialServ.connectionStatus.pipe(first((f) => f == 'connected'))
+    );
+    this.router.navigate(['main']);
+  }
+  async initialize() {
+    this.serialServ.initializeSerial();
+  }
 }

@@ -1,0 +1,35 @@
+<ngb-toast
+  style="position: relative"
+  *ngFor="let toast of toastService.toasts; track: toast"
+  [autohide]="true"
+  [delay]="toast.delay || toastDelay"
+  (hidden)="toastService.remove(toast)"
+  [header]="toast.header"
+  [class]="toast.color != null ? 'bg-' + toast.color : null"
+>
+  <div class="meter">
+    <span style="width: 100%">
+      <span class="progress progress-bar" [ngStyle]="{ 'animation-duration': toast?.delay ?? toastDelay + 'ms' }"></span>
+    </span>
+  </div>
+  <ng-template ngbToastHeader *ngIf="toast.header != null">
+    <div class="me-auto">
+      {{ toast.header }}
+    </div>
+  </ng-template>
+  <div class="d-flex">
+    <span
+      class="me-auto"
+      [ngClass]="{ 'text-white': toast.color == 'danger', 'text-black': toast.color == 'info' || toast.color == 'warning' }"
+    >
+      {{ toast.body }}
+    </span>
+    <button
+      *ngIf="toast.header == null"
+      type="button"
+      class="btn-close btn-close-white"
+      data-bs-dismiss="toast"
+      aria-label="Close"
+    ></button>
+  </div>
+</ngb-toast>

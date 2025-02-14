@@ -1,17 +1,27 @@
 {
   "name": "buzzer-control-center",
+  "productName": "buzzer-control-center",
   "version": "0.0.0",
+  "description": "Buzzer Control Center",
+  "author": {
+    "name": "Rafael Dee"
+  },
   "scripts": {
     "ng": "ng",
-    "start": "electron-forge start",
     "build": "ng build",
-    "start-electron": "ng build --base-href ./ && electron .",
+    "build-buzzer-control-center": "ng build",
+    "serve-buzzer-control-center": "ng serve BuzzerControlCenter",
+    "start-electron": "ng build && electron .",
+    "build-electron": "tsc --project projects/electron/tsconfig.json",
+    "wait-for-serve-buzzer-control-center": "wait-on http://localhost:4200",
     "watch": "ng build --watch --configuration development",
+    "start": "concurrently \"npm run build-electron\" \"npm run serve-buzzer-control-center\" \"npm run wait-for-serve-buzzer-control-center && electron-forge start\"",
     "test": "ng test",
-    "package": "electron-forge package",
-    "make": "electron-forge make"
+    "package": "npm run build-electron && npm run build-buzzer-control-center && electron-forge package",
+    "make": "npm run build-electron && npm run build-buzzer-control-center && electron-forge make",
+    "publish-app": "npm run build-electron && npm run build-buzzer-control-center && electron-forge publish"
   },
-  "main": "app.js",
+  "main": "dist/index.js",
   "private": true,
   "dependencies": {
     "@angular/animations": "^19.1.0",
@@ -34,6 +44,8 @@
     "electron-squirrel-startup": "^1.0.1",
     "node-polyfill-webpack-plugin": "^4.1.0",
     "rxjs": "~7.8.0",
+    "ts-loader": "^9.5.2",
+    "ts-node": "^10.9.2",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"
   },
@@ -51,7 +63,7 @@
     "@electron-forge/plugin-fuses": "^7.6.1",
     "@electron/fuses": "^1.8.0",
     "@types/jasmine": "~5.1.0",
-    "electron": "^34.0.1",
+    "electron": "^34.1.1",
     "jasmine-core": "~5.5.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",

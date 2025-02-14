@@ -1,0 +1,67 @@
+<div class="container">
+  <div class="mb-4">
+    <button class="btn btn-primary" (click)="requestPort()">requestPort</button>
+    <button class="btn btn-primary" (click)="resetState()">reset state</button>
+    <button class="btn btn-primary" (click)="ready()">READY</button>
+    <button class="btn btn-primary" (click)="edit = !edit">
+      {{ edit ? "Save" : "Edit" }}
+    </button>
+    <br />
+    <a class="btn btn-primary" [routerLink]="['/sec_scr']" target="_blank"
+      >SECOND SCREEN</a
+    >
+    @let connStatus = serialServ.connectionStatus|async;
+    <button
+      class="btn btn-primary" [disabled]="connStatus == 'connecting'"
+      (click)="connStatus == 'connected' ? serialServ.disconnect() : serialServ.connect()"
+    >
+      {{ connStatus | titlecase }}
+    </button>
+    <button class="btn btn-primary" (click)="gameManager.correctAns()">
+      CORRECT
+    </button>
+    <button class="btn btn-primary" (click)="gameManager.wrongAns()">
+      WRONG
+    </button>
+    <button class="btn btn-primary" (click)="gameManager.suspenseAns()">
+      SUSPENSE
+    </button>
+  </div>
+  <div
+    cdkDropList
+    [draggable]="false"
+    cdkDropListOrientation="mixed"
+    (cdkDropListDropped)="drop($event)"
+    class="row d-flex g-3 cdk-list"
+  >
+    <div
+      *ngFor="
+        let item of gameManager.podiums | keyvalue;
+        let i = index;
+        trackBy: identify
+      "
+      class="col-6 col-sm-4 col-md-3 col-lg-sp"
+    >
+      <app-podium-item
+        class="cdk-item"
+        cdkDrag
+        [cdkDragDisabled]="!edit"
+        [edit]="edit"
+        [podiumPlacement]="gameManager.buttonPlacing[i]"
+        [podium]="item.value"
+        [index]="i"
+        (onSpotlight)="gameManager.spotLightPodium(i)"
+      ></app-podium-item>
+    </div>
+  </div>
+
+  <p>
+    {{
+      (serialServ.serialSupport | async)
+        ? "Supported Browser"
+        : "Not Supported Browser"
+    }}
+  </p>
+  <p>{{ connStatus | titlecase }}</p>
+  {{ gameManager.buttonPlacing | json }}
+</div>
