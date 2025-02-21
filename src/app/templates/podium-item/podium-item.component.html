@@ -15,8 +15,7 @@
           </div>
         </div>
       </div>
-     {{podium.battVoltage}}mV
-      @let s = status;
+      {{ podium.battVoltage }}mV @let s = status;
       <span
         class="text-center tag m-0"
         [ngClass]="'bg-' + s.color"
@@ -24,7 +23,7 @@
       >
         {{ s.title }}
       </span>
-      <div style="width: 24px" >
+      <div style="width: 24px">
         <div *ngIf="edit" class="example-handle" cdkDragHandle>
           <svg width="24px" fill="currentColor" viewBox="0 0 24 24">
             <path
@@ -54,6 +53,7 @@
           [ngStyle]="{ 'background-color': !npc.isClass ? npc.color : null }"
           [ngModel]="podiumTitle"
           (ngModelChange)="podium.title = $event"
+          (change)="onTitleChange($event)"
           name="title"
           placeholder="Podium#"
         />

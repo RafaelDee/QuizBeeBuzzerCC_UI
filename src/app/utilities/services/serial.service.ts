@@ -1,4 +1,4 @@
-import { EventEmitter, Injectable } from '@angular/core';
+import { EventEmitter, Injectable, OnDestroy } from '@angular/core';
 import {
   BehaviorSubject,
   filter,
@@ -6,12 +6,14 @@ import {
   firstValueFrom,
   map,
   Observable,
+  skip,
   Subscription,
   tap,
 } from 'rxjs';
 import { Command } from './game-manager.service';
 import { asyncDelay } from '../common-utils';
-var defaultSerialOptions: SerialOptions = {
+import { DeviceTimeoutError, SerialDevice } from './serial-device';
+export const defaultSerialOptions: SerialOptions = {
   baudRate: 115200,
   dataBits: 8,
   stopBits: 1,
@@ -26,8 +28,8 @@ export interface SerialWriteQueue {
   payload?: string;
   idempotencyToken: number;
 }
-const pairKey: string = 'c8e89336-1cbb-4028-b1fe-0079c00d6b4f';
-const filters = [{ usbVendorId: 4292, usbProductId: 60000 }];
+export const pairKey: string = 'c8e89336-1cbb-4028-b1fe-0079c00d6b4f';
+const filters = [{ usbVendorId: 0x303a, usbProductId: 0x0002 }];
 /**DO NOT JUST COPY, COMMANDS ARE INVERTED ON ESP32 */
 export enum SendCommands {
   Acknowledge,
@@ -42,18 +44,8 @@ export enum SendCommands {
   SwapPodium,
   PodiumBrightness,
   PodiumColor,
+  RemovePodium,
 }
-const sendCommandsList = [
-  'Acknowledge',
-  'ResetGameState',
-  'Pair',
-  'Summary',
-  'ReadyGameState',
-  'CorrectAnswer',
-  'WrongAnswer',
-  'SuspenseGame',
-  'SpotLightPodium',
-];
 export enum ReceiveCommands {
   Acknowledge,
   Dnr,
@@ -63,17 +55,10 @@ export enum ReceiveCommands {
   PodiumAdded,
   PodiumPlacement,
   BattStat,
+  GameState,
+  SpotLightPodium,
+  PodiumBrightness,
 }
-const receiveCommandsList = [
-  'Acknowledge',
-  'Dnr',
-  'Pair',
-  'Ready',
-  'HeartbeatCmd',
-  'PodiumAdded',
-  'PodiumPlacement',
-  'BattStat',
-];
 function charToCommand<T>(char: string, enumType: any): T | null {
   // Check if the character matches any value in the enum
   const command = Object.values(enumType).find((value) => value === char);
@@ -81,188 +66,101 @@ function charToCommand<T>(char: string, enumType: any): T | null {
   // If a match is found, return the corresponding enum value; otherwise, return null
   return command ? (command as T) : null;
 }
-class PortNotConnectedError extends Error {
-  override message: string = 'Cannot open port';
-}
-class DeviceTimeoutError extends Error {
-  override message: string = 'Device took too long to respond correctly ';
-}
-class SerialDevice {
-  textEncoder = new TextEncoderStream();
-  private textDecoder: TextDecoderStream | null = null;
-  private writer: WritableStreamDefaultWriter<string> | null = null;
-  private reader: ReadableStreamDefaultReader<string> | null = null;
-  private writableStreamClosed: Promise<void> | null = null;
-  private readableStreamClosed: Promise<void> | null = null;
-  private stream = new BehaviorSubject<string>(null);
-  private isReading = false;
-  private disconnected = false;
-  public ondisconnect: () => void;
-  constructor(public port: SerialPort) {
-    const bc = new BroadcastChannel("test_channel");
-    port.ondisconnect = () => this.disconnect();
-  }
-  disconnect(){
-    if(this.disconnected)return;
-    this.disconnected = true;
-    this.ondisconnect?.call(null)
-  }
-  async open(options: SerialOptions = defaultSerialOptions) {
-    try {
-      this.stream = new BehaviorSubject<string>(null);
-      // First ensure we're fully closed
-      try {
-        await this.close();
-      } catch (err) {
-        console.warn(err);
-      }
-
-      // Then open the port
-      try {
-        await this.port.open(options);
-      } catch (err) {
-        await this.close();
-      }
-      if (!this.port.readable || !this.port.writable) {
-        throw new PortNotConnectedError();
-      }
-
-      // Initialize streams
-      this.textEncoder = new TextEncoderStream();
-      this.textDecoder = new TextDecoderStream();
-
-      // Set up the pipeline
-      this.writableStreamClosed = this.textEncoder.readable.pipeTo(
-        this.port.writable
-      );
-      this.readableStreamClosed = this.port.readable.pipeTo(
-        this.textDecoder.writable
-      );
-
-      // Get reader and writer
-      this.writer = this.textEncoder.writable.getWriter();
-      this.reader = this.textDecoder.readable.getReader();
-
-      // Start reading loop
-      this.isReading = true;
-      this.disconnected = false;
-      await asyncDelay(200);
-      this.readLoop();
-    } catch (error) {
-      console.error('Failed to open port:', error);
-      await this.close();
-      /* if (error instanceof DOMException && error.code === DOMException.NETWORK_ERR){
-
-      } */
-
-      throw error;
-    }
-  }
-  private async readLoop() {
-    let buffer = '';
-
-    try {
-      while (this.isReading && this.reader) {
-        const { value, done } = await this.reader.read();
-        if (done) break;
-
-        buffer += value;
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-
-        for (const line of lines) {
-          this.stream.next(line);
-        }
-      }
-    } catch (error) {
-      console.error('Error in read loop:', error);
-      this.stream.error(error);
-    } finally {
-      this.isReading = false;
-    }
-  }
-
-  async write(chunk?: string) {
-    if (!this.writer) {
-      throw new Error('Port is not open');
-    }
-    try {
-      await this.writer.write(chunk);
-      await asyncDelay(10);
-    } catch (error) {
-      console.error('Write error:', error);
-      throw error;
-    }
-  }
-
-  async close() {
-    this.isReading = false;
-
-    try {
-      // Release writer
-      if (this.writer) {
-        await this.writer.close().catch(() => {});
-        this.writer.releaseLock();
-        this.writer = null;
-      } else {
-        console.warn('Missing writer');
-      }
-
-      // Release reader
-      if (this.reader) {
-        await this.reader.cancel().catch(() => {});
-        this.reader.releaseLock();
-        this.reader = null;
-      } else {
-        console.warn('Missing reader');
-      }
-
-      // Wait for streams to close
-      if (this.writableStreamClosed) {
-        await this.writableStreamClosed.catch(() => {});
-        this.writableStreamClosed = null;
-      }
-      if (this.readableStreamClosed) {
-        await this.readableStreamClosed.catch(() => {});
-        this.readableStreamClosed = null;
-      }
-
-      // Clean up streams
-      this.textEncoder = null;
-      this.textDecoder = null;
-
-      // Close port
-      if (this.port?.readable || this.port?.writable) {
-        await this.port.close().catch(() => {});
-      }
-      this.disconnect();
-    } catch (error) {
-      console.error('Error during close:', error);
-    }
-  }
-
-  read() {
-    return this.stream.asObservable();
-  }
+export interface InterConnectPacket {
+  type:
+    | 'leader-check'
+    | 'leader-exists'
+    | 'conn-status'
+    | 'serial-msg-rec'
+    | 'serial-msg-send';
+  payload?: any;
 }
 const connectionStatusList = [
   'connected',
   'connecting',
   'disconnected',
+  'disconnected-no-recon',
 ] as const;
 export type ConnectionStatus = (typeof connectionStatusList)[number];
 @Injectable({
   providedIn: 'root',
 })
 export class SerialService {
-  private _stream: BehaviorSubject<Command> = new BehaviorSubject(undefined);
+  private _stream: BehaviorSubject<Command<ReceiveCommands>> =
+    new BehaviorSubject(undefined);
   stream = this._stream.asObservable();
   serialSupport = new BehaviorSubject<boolean>(null);
   connectedSerialDevice: SerialDevice;
   connectionStatus = new BehaviorSubject<ConnectionStatus>('disconnected');
   private serial: Serial;
-  constructor() {}
+  channel: BroadcastChannel;
+  private isLeader = new BehaviorSubject<boolean>(null);
+  private channelMessage = new BehaviorSubject<InterConnectPacket>(null);
+  constructor() {
+    this.channel = new BroadcastChannel('sync_channel_serial-' + pairKey);
+    //this.announcePresence();
+    this.channel.onmessage = (msg) => {
+      const data = msg?.data as InterConnectPacket;
+      if (data == null) return;
+      this.channelMessage.next(data);
+    };
+    this.channelMessage.asObservable().subscribe((msg) => {
+      if (msg == null) return;
+      switch (msg.type) {
+        case 'leader-check':
+          if (!this.isLeader.value) break;
+          console.log('sending im the leader');
+          this.channel.postMessage({
+            type: 'leader-exists',
+          } as InterConnectPacket);
+          this.channel.postMessage({
+            type: 'conn-status',
+            payload: this.connectionStatus.value,
+          } as InterConnectPacket);
+          this.channel.postMessage({
+            type: 'serial-msg-send',
+            payload: this._stream.value,
+          } as InterConnectPacket);
+          break;
+        case 'conn-status':
+          if (!msg.payload) return;
+          this.connectionStatus.next(msg.payload);
+          break;
+        case 'serial-msg-rec':
+          console.warn('received serial');
+          if (this.isLeader.value) return;
+          console.log(JSON.stringify(msg.payload));
+          this._stream.next(msg.payload);
+          break;
+        case 'serial-msg-send':
+          if (!this.isLeader.value) return;
+          this.writeToDevice(
+            this.connectedSerialDevice,
+            msg.payload.command,
+            msg.payload.payload
+          );
+          break;
+      }
+    });
+    this.connectionStatus.asObservable().subscribe((conn) => {
+      if (!this.isLeader.value) return;
+      this.channel.postMessage({
+        type: 'conn-status',
+        payload: conn,
+      } as InterConnectPacket);
+    });
+  }
   async initializeSerial() {
+    //wait for the singleton check
+
+    const hasInstance = await this.checkInstances();
+    this.isLeader.next(!hasInstance);
+    if (hasInstance) {
+      console.log('listening to master');
+
+      return;
+    }
+    this.channel.postMessage({ type: 'leader-exists' });
     if (this.connectionStatus.value == 'connected')
       throw new SerialAlreadyConnected();
     this.connectionStatus.next('connecting');
@@ -270,18 +168,64 @@ export class SerialService {
     this.serialSupport.next(serialSupported);
     if (!serialSupported) return;
     this.serial = await navigator.serial;
-
     await this.connectToDevice();
   }
-  async disconnect() {
+  /**returns true when theres one */
+  async checkInstances(): Promise<boolean> {
+    console.log('leader check');
+    this.channel.postMessage({ type: 'leader-check' } as InterConnectPacket);
+    return await Promise.race([
+      new Promise<boolean>(async (resolve) => {
+        const randomDelay = Math.random() * 100; // 0-50ms random delay
+        await asyncDelay(randomDelay);
+        console.log('timed outs');
+        resolve(false);
+      }),
+      new Promise<boolean>(async (resolve) => {
+        await firstValueFrom(
+          this.channelMessage.pipe(
+            skip(1),
+            filter((f) => f != null && f.type === 'leader-exists')
+          )
+        );
+
+        console.log('leader exist');
+        resolve(true);
+      }),
+    ]);
+  }
+  /* announcePresence() {
+    const leaderTimeout = setTimeout(() => {
+      this.isLeader.next(true);
+      console.log('I am the first/leader');
+    }, 100);
+    this.channel.onmessage = (event) => {
+      const data = event.data as InterConnectPacket;
+      console.log('message received' + JSON.stringify(data));
+      switch (data.type) {
+        case 'leader-check':
+          if (this.isLeader.value) {
+            console.log('sending im the leader');
+            this.channel.postMessage({ type: 'leader-exists' });
+          }
+          break;
+        case 'leader-exists':
+          clearTimeout(leaderTimeout);
+          this.isLeader.next(false);
+          console.log('Someone else is already leader');
+          break;
+      }
+    };
+  } */
+
+  async disconnect(recon: boolean = true) {
     await this.connectedSerialDevice.close();
     //use different listener, prob use connectedSerialDevice
-    this.connectionStatus.next('disconnected');
+    this.connectionStatus.next(
+      recon ? 'disconnected' : 'disconnected-no-recon'
+    );
   }
 
-  async requestPort() {
-    await this.serial.requestPort();
-  }
   /**@Throwable */
   async connect() {
     if (this.connectionStatus.value == 'connecting')
@@ -290,7 +234,7 @@ export class SerialService {
   }
   sub: Subscription;
   async connectToDevice() {
-    const ports = await this.serial.getPorts({ filters });
+    const ports = await this.serial.getPorts();
     console.log(`available ports: ${ports.length}`);
     const serialDevices = await Promise.all(
       ports?.map((p) => new SerialDevice(p))
@@ -314,17 +258,25 @@ export class SerialService {
       this.sub = validConncetion.device.read().subscribe(async (r) => {
         const command = this.parseCommand(r);
         if (!command) return;
-        await this.sendAcknowledge(
-          validConncetion.device,
-          command.idempotencyToken
-        );
-        if (command.command == ReceiveCommands.Acknowledge)
+
+        if (command.command == ReceiveCommands.Acknowledge) {
           this.acknowledgeReceivedMessage(command.idempotencyToken);
+        } else {
+          await this.sendAcknowledge(
+            validConncetion.device,
+            command.idempotencyToken
+          );
+        }
+        this.channel.postMessage({
+          type: 'serial-msg-rec',
+          payload: command,
+        } as InterConnectPacket);
         this._stream.next(command);
       });
       this.connectionStatus.next('connected');
     } catch (err) {
       this.connectionStatus.next('disconnected');
+      this.isLeader.next(null);
       this.sub?.unsubscribe();
       for (let device of serialDevices) {
         device.close();
@@ -360,10 +312,17 @@ export class SerialService {
     idempotencyToken: number;
     payload: string;
   } {
+    console.log('CC msg:', stream ?? 'NONE');
     if (stream == null) return null;
-    console.log('parsing:' + stream);
+
     if (!stream.charAt(0).match('/')) return null;
-    const parseKey = stream.substring(1).split(':', 2);
+    const keyIndex = stream.indexOf(':');
+    if (keyIndex === -1) return null; // No ':' found
+    const parseKey = [
+      stream.substring(1, keyIndex), // First part (key)
+      stream.substring(keyIndex + 1), // Remainder (value)
+    ];
+    console.log('parseKey:', parseKey ?? 'NONE');
     if (parseKey.length != 2) {
       console.log(`${stream}`);
       console.error('invalid command');
@@ -375,15 +334,22 @@ export class SerialService {
       return null;
     }
     const cmd = parseKey[1];
-    const split = cmd.split(' ', 2);
-    if (split == null || split.length <= 0) return null;
-    const command = Number.parseInt(split.shift());
-    if (Number.isNaN(command)) {
-      console.log(`${stream}`);
+    const cmdIndex = cmd.indexOf(' ');
+    const command = Number.parseInt(cmd.substring(0, cmdIndex));
+    if (command == null || Number.isNaN(command)) {
+      console.error(`Invalid Command: ${stream}`);
       return null;
     }
-    console.log(`command: ${receiveCommandsList[command]} ${split.join(' ')}`);
-    return { command: command, idempotencyToken, payload: split.join(' ') };
+    console.log(
+      `command: ${ReceiveCommands[command]} payload: ${cmd.substring(
+        cmdIndex + 1
+      )}`
+    );
+    return {
+      command: command,
+      idempotencyToken,
+      payload: cmd.substring(cmdIndex + 1),
+    };
   }
 
   private _currentidempotencyToken: number = 0;
@@ -412,6 +378,7 @@ export class SerialService {
           const readCommands = device
             .read()
             .pipe(map((m) => this.parseCommand(m)));
+
           sub = readCommands.subscribe(async (f) => {
             if (f == null) return;
             /**TODO: Rewrite protocol. UI sends first then CC */
@@ -440,6 +407,7 @@ export class SerialService {
               }
             }
           });
+          this.writeToDevice(device, SendCommands.Pair);
         }),
       ]);
     } catch (err) {
@@ -475,19 +443,25 @@ export class SerialService {
     idempotencyToken: number = null,
     retry: boolean = true
   ) {
+    if (!this.isLeader.value) {
+      this.channel.postMessage({
+        type: 'serial-msg-send',
+        payload: { command: command, payload: payload },
+      } as InterConnectPacket);
+      return;
+    }
     if (idempotencyToken == null) {
       idempotencyToken = this.currentidempotencyToken;
       this.currentidempotencyToken++;
     }
-    const commandChar = [command, payload].filter((f) => f != null).join(',');
-    const wr = `${idempotencyToken}:${commandChar}\n`;
+    const wr = `${+idempotencyToken}:${command} ${payload ?? ''}\n`;
 
     this.serialWriteQueue.add(idempotencyToken);
     let attempts = 0;
     do {
       console.log(
-        `Wiriting to device: "${wr}" or ${idempotencyToken}: ${
-          sendCommandsList[command]
+        `Writing to device: "${wr}" or ${idempotencyToken}: ${
+          SendCommands[command]
         } ${payload != null ? payload : ''}`
       );
       await device.write(wr);
@@ -498,54 +472,22 @@ export class SerialService {
       this.serialWriteQueue.has(idempotencyToken) &&
       attempts <= 3
     );
+    if (attempts > 3 && this.serialWriteQueue.has(idempotencyToken)) {
+      console.error(
+        new Error('Failed to Send message Token:' + idempotencyToken)
+      );
+    }
+    this.serialWriteQueue.delete(idempotencyToken);
   }
 
-  listenToDevice(port: SerialPort): {
-    closed: Promise<void>;
-    data: Observable<string>;
-  } {
-    const textDecoder = new TextDecoderStream();
-    const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
-    const reader = textDecoder.readable.getReader();
-    return {
-      closed: readableStreamClosed.catch(() => {}),
-      data: new Observable<string>((subscriber) => {
-        // Ensure the port is open before reading
-        (async () => {
-          let buffer = '';
-          // Listen to data coming from the serial device.
-          while (true) {
-            const { value, done } = await reader.read();
-            if (done) {
-              reader.releaseLock();
-              break;
-            }
-            // value is a string.
-            buffer += value;
-            const lines = buffer.split('\n');
-            buffer = lines.pop() ?? '';
-            for (const line of lines) {
-              subscriber.next(line);
-            }
-          }
-        })();
-
-        // Handle unsubscription
-        return async () => {
-          reader.cancel();
-        };
-      }),
-    };
-  }
-
-  async requestPortDevice(serial: any) {
+  async requestPort() {
     try {
-      const port = await serial.requestPort({ filters });
+      const port = await this.serial.requestPort();
       console.log(port.getInfo());
       return port;
     } catch (err) {
       console.error(err);
-      const ports = await serial.getPorts({ filters });
+      const ports = await this.serial.getPorts();
       console.log(ports);
       return ports[1];
     }

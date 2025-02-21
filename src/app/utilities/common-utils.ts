@@ -8,6 +8,9 @@ export function toFormalString(str: string) {
     .map((word) => capitalizeFirstLetter(word))
     .join(' ');
 }
+export function constrain(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(value, max));
+}
 export function replaceUndefinedWithNull(obj: any): any {
   if (obj === undefined) {
     return null;

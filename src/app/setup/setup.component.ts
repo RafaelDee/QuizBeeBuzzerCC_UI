@@ -20,7 +20,7 @@ import { filter, first, firstValueFrom } from 'rxjs';
 })
 export class SetupComponent {
   constructor(public serialServ: SerialService, private router: Router) {
-    this.initialize();
+    this.initialize(true);
     this.waitForConnection();
   }
   async waitForConnection() {
@@ -29,7 +29,8 @@ export class SetupComponent {
     );
     this.router.navigate(['main']);
   }
-  async initialize() {
+  async initialize(auto:boolean = false) {
+    if(auto && this.serialServ.connectionStatus.value == 'disconnected-no-recon')return;
     this.serialServ.initializeSerial();
   }
 }

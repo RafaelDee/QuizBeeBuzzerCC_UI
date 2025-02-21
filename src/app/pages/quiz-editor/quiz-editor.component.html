@@ -1,0 +1,58 @@
+<div class="container">
+  <div class="row">
+    <div class="col-md-6">
+      <div
+        class="list-group mb-3"
+        cdkDropList
+        (cdkDropListDropped)="drop($event)"
+      >
+        @for (question of questions;track question;let i = $index){
+        <button
+          cdkDrag
+          [class.active]="currentQuestionIndex == i"
+          class="list-group-item list-group-item-action"
+          aria-current="true"
+          (click)="changeQuestion(i)"
+        >
+          Q#{{ i + 1 }}: {{ question.question }}
+        </button>
+        }
+        @if (isNew){
+          <button
+          class="list-group-item list-group-item-action active"
+          aria-current="true"
+        >
+          New Question
+        </button>
+        }
+      </div>
+      <button class="btn btn-primary w-100" (click)="newQuestion()">New</button>
+    </div>
+    <div *ngIf="currentQuestion" class="col-md-6">
+      <h5>
+        {{ isNew ? "New " : "" }}Question #{{
+          isNew ? "" : currentQuestionIndex + 1
+        }}
+      </h5>
+      <textarea
+        #questionInput
+        class="w-100 form-controls"
+        [(ngModel)]="currentQuestion.question"
+      ></textarea>
+      <textarea
+        #answerInput
+        class="w-100 form-controls"
+        [(ngModel)]="currentQuestion.answer"
+      ></textarea>
+      <div class="d-flex justify-content-between align-items-center">
+        <button class="btn btn-primary" (click)="saveQuestion()">Save</button>
+        <button class="btn btn-primary" (click)="discardQuestion()">
+          Discard
+        </button>
+        <button class="btn btn-primary" (click)="deleteQuestion()">
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

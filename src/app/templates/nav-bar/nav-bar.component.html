@@ -1,0 +1,137 @@
+<nav
+  class="navbar navbar-expand-lg fixed-top"
+  [ngClass]="{
+    'navbar-solid bg-body-tertiary': isScrolled || !allowTopTransparency,
+    '': !isScrolled && allowTopTransparency
+  }"
+>
+  <div class="container-fluid">
+    <a class="navbar-brand d-flex align-content-center align-items-center" [routerLink]="['/']">
+      <img class="invert" [ngClass]="{ 'd-none': titleType == 'title' }" src="/assets/images/applogo.png" height="30" />
+      {{ titleType != "logo" ? title : "" }}
+    </a>
+    <button
+      class="navbar-toggler"
+      type="button"
+      data-bs-toggle="offcanvas"
+      data-bs-target="#offcanvasNavbar"
+      aria-controls="offcanvasNavbar"
+      aria-label="Toggle navigation"
+    >
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbarLabel">
+      <ng-template [ngTemplateOutlet]="content"></ng-template>
+    </div>
+  </div>
+</nav>
+<ng-template #content let-offcanvas>
+  <div class="offcanvas-header">
+    <h3 class="offcanvas-title" id="offcanvasResponsiveLabel">
+      {{ currentRoute }}
+    </h3>
+    <button
+      type="button"
+      class="btn-close pt-4 pe-5"
+      data-bs-dismiss="offcanvas"
+      data-bs-target="#offcanvasNavbar"
+      aria-label="Close"
+    ></button>
+  </div>
+  <div class="offcanvas-body">
+    <ul class="nav-text-blend navbar-nav mb-auto mb-lg-0">
+      <li class="nav-item" *ngFor="let nav of navItems">
+        <a
+          *ngIf="!nav.children"
+          class="nav-link"
+          aria-current="page"
+          data-bs-dismiss="offcanvas"
+          data-bs-target="#offcanvasNavbar"
+          role="button"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: nav.routeActiveExact ?? false }"
+          [routerLink]="nav.route"
+        >
+          <span>
+            <i class="fa-lg" [class]="nav.icon"></i>
+            {{ nav.name }}
+          </span>
+        </a>
+        <ng-template *ngIf="nav.children" [ngTemplateOutlet]="navItemStack" [ngTemplateOutletContext]="{ nav: nav }"></ng-template>
+      </li>
+    </ul>
+    <hr />
+    <div class="navbar-right row g-0" style="align-items: center">
+      <div class="col-auto order-1">
+        <div class="dropdown theme" data-bs-display="static">
+          <a class="nav-link p-1 theme-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            <i
+              class="fa-solid fa-lg"
+              [class]="getIsDarkThemed() ? 'fa-moon' : 'fa-sun'"
+              [style.color]="getIsDarkThemed() ? '#ffffff' : '#ffcc33'"
+              style="cursor: pointer"
+            ></i>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li>
+              <a class="dropdown-item" (click)="setDark(null)" data-bs-dismiss="offcanvas" data-bs-target="#offcanvasNavbar">Auto</a>
+            </li>
+            <li>
+              <a class="dropdown-item" (click)="setDark(true)" data-bs-dismiss="offcanvas" data-bs-target="#offcanvasNavbar">Dark</a>
+            </li>
+            <li>
+              <a class="dropdown-item" (click)="setDark(false)" data-bs-dismiss="offcanvas" data-bs-target="#offcanvasNavbar">Light</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <ng-template #navItemStack let-nav="nav" let-drop="drop" let-child="child">
+    <span class="dropdown">
+      <a
+        class="dropdown-toggle nav-link"
+        data-bs-toggle="dropdown"
+        [class.active]="router.isActive(nav.route, false)"
+        ariaCurrentWhenActive="page"
+        role="button"
+        aria-current="page"
+      >
+        <i class="fa-lg" [class]="nav.icon"></i>
+        {{ nav.name }}
+      </a>
+      <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+        <li *ngFor="let nav of nav.children">
+          <a
+            *ngIf="!nav.children"
+            class="dropdown-item"
+            #tasksActive="routerLinkActive"
+            data-bs-dismiss="offcanvas"
+            data-bs-target="#offcanvasNavbar"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: nav.routeActiveExact ?? false }"
+            aria-current="page"
+            [routerLink]="nav.route"
+          >
+            <span>
+              <i class="fa-lg" [class]="nav.icon"></i>
+              {{ nav.name }}
+            </span>
+          </a>
+          <ng-template
+            *ngIf="nav.children"
+            [ngTemplateOutlet]="navItemStack"
+            [ngTemplateOutletContext]="{
+              nav: nav,
+              drop: 'dropstart',
+              child: true
+            }"
+          ></ng-template>
+        </li>
+      </ul>
+    </span>
+  </ng-template>
+</ng-template>
+<div class="navbar-offset" [ngClass]="{ 'navbar-transparent': allowTopTransparency }"></div>

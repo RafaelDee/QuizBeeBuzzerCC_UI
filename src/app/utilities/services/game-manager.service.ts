@@ -3,9 +3,24 @@ import { ReceiveCommands, SendCommands, SerialService } from './serial.service';
 import { filter, firstValueFrom } from 'rxjs';
 import { dnrSeverity, LEDState, Podium } from '../../values/podium.values';
 import { Router } from '@angular/router';
-
-export interface Command {
-  command: SendCommands | ReceiveCommands;
+import { constrain } from '../common-utils';
+export enum GameState {
+  // used when nothing is happening, resets the podium interface
+  Idle,
+  // use to lock podium actions, podium light status is kept
+  Lock,
+  // ready for podium actions
+  QuizReady,
+  // button as been pressed, spotlights the podium
+  QuizAnswered,
+  CorrectAns,
+  WrongAns,
+  SuspenseAns,
+  OffAllPodium,
+  Spotlight,
+}
+export interface Command<T extends SendCommands | ReceiveCommands> {
+  command: T;
   payload: string;
 }
 
@@ -13,9 +28,11 @@ export interface Command {
   providedIn: 'root',
 })
 export class GameManagerService {
-  podiumsConnected: boolean;
   podiums: Map<number, Podium> = new Map();
+  cuurentGameState: GameState = GameState.Idle;
   buttonPlacing: number[] = [];
+  brightnessBtn = 255;
+  brightnessFce = 255;
   constructor(private serial: SerialService, private router: Router) {
     this.init();
   }
@@ -35,19 +52,42 @@ export class GameManagerService {
     this.sendSummary();
   }
   sendSummary() {
+    this.podiums.clear();
+    this.buttonPlacing = [];
     this.serial.write(SendCommands.Summary);
   }
   swapPodium(podiumA: number, podiumB: number) {
     if (podiumA == podiumB) return;
+    const podiumAData = this.podiums.get(podiumA);
+    const podiumBData = this.podiums.get(podiumB);
+    const podAMac = podiumAData.macAddr;
+    const podBMac = podiumBData.macAddr;
+    podiumAData.macAddr = podBMac;
+    podiumBData.macAddr = podAMac;
+    if (podiumAData && podiumBData) {
+      this.podiums.set(podiumA, podiumBData);
+      this.podiums.set(podiumB, podiumAData);
+    }
+    this.savePodiumState(podiumAData, podAMac);
+    this.savePodiumState(podiumBData, podBMac);
     this.serial.write(SendCommands.SwapPodium, [podiumA, podiumB].join(','));
+  }
+  /* swapPodium(podiumA: number, podiumB: number) {
+    if (podiumA == podiumB) return;
+    const test = Array.from(this.podiums.keys());
+    const podPosA = test[podiumA];
+    const podPosB = test[podiumB];
+    this.serial.write(SendCommands.SwapPodium, [podPosA, podPosB].join(','));
     const podiumAData = this.podiums.get(podiumA);
     const podiumBData = this.podiums.get(podiumB);
     if (podiumAData && podiumBData) {
       this.podiums.set(podiumA, podiumBData);
       this.podiums.set(podiumB, podiumAData);
     }
-  }
+  } */
+  podiumInSpotlight = null;
   spotLightPodium(index: number) {
+    this.podiumInSpotlight = index;
     this.serial.write(SendCommands.SpotLightPodium, '' + index);
     this.setToAllPodiums({ ledState: LEDState.OFF }, { exclude: [index] });
     this.setToAllPodiums(
@@ -59,6 +99,7 @@ export class GameManagerService {
     this.setToAllPodiums({ ledState: LEDState.StandBy });
     this.serial.write(SendCommands.ResetGameState);
     this.buttonPlacing = [];
+    this.podiumInSpotlight = null;
   }
   readyGame() {
     this.setToAllPodiums({ ledState: LEDState.StandBy });
@@ -73,11 +114,25 @@ export class GameManagerService {
     this.setToAllPodiums({ ledState: LEDState.SuspenseAnswer });
     this.serial.write(SendCommands.SuspenseGame);
   }
+  /**from 0 to 255 */
+  setPodiumBrightness(
+    brightnessFce: number,
+    brightnessBtn: number,
+    sendToSerial = true
+  ) {
+    this.brightnessBtn = constrain(+brightnessBtn, 0, 255);
+    this.brightnessFce = constrain(+brightnessFce, 0, 255);
+    if (!sendToSerial) return;
+    this.serial.write(
+      SendCommands.PodiumBrightness,
+      [brightnessFce, brightnessBtn].join(',')
+    );
+  }
   wrongAns() {
     this.setToAllPodiums({ ledState: LEDState.WrongAnswer });
     this.serial.write(SendCommands.WrongAnswer);
   }
-  setToAllPodiums(
+  private setToAllPodiums(
     podium: Partial<Podium>,
     options: { include?: number[]; exclude?: number[] } = {}
   ) {
@@ -93,8 +148,11 @@ export class GameManagerService {
     }
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i];
-      const val = this.podiums.get(key);
-      this.podiums.set(key, { ...val, ...podium });
+      this.setPodium(key, podium);
+      /* const val = this.podiums.get(key);
+      const p = { ...val, ...podium };
+      this.podiums.set(key, p);
+      this.savePodiumState(p); */
     }
   }
   setPodium(index: number, podium: Partial<Podium> = null) {
@@ -102,17 +160,14 @@ export class GameManagerService {
     if (podium == null) return;
 
     const pod = { ...this.podiums.get(index), ...podium };
+    this.savePodiumState(pod);
     this.podiums.set(index, pod);
   }
 
-  processCommand(command: Command) {
+  processCommand(command: Command<ReceiveCommands>) {
     switch (command.command) {
       case ReceiveCommands.Dnr:
-        const cmd = command.payload.split(',');
-        if (cmd.length != 2) {
-          console.error(`Invalid command length ${command.payload}`);
-          return;
-        }
+        const cmd = this.splitPayload(command.payload, 2);
         const index = +cmd[0];
         const status = dnrSeverity[+cmd[1]];
         this.setPodium(index, { dnr: status });
@@ -126,16 +181,38 @@ export class GameManagerService {
       case ReceiveCommands.BattStat:
         this.battStat(command.payload);
         return;
+      case ReceiveCommands.GameState:
+        this.setgameState(command.payload);
+        return;
+      case ReceiveCommands.PodiumBrightness:
+        const payload = this.splitPayload(command.payload, 2);
+        this.setPodiumBrightness(
+          Number.parseInt(payload[0]),
+          Number.parseInt(payload[1]),
+          false
+        );
+        return;
       default:
         break;
     }
   }
-  battStat(payload: string) {
+  splitPayload(payload: string, count: number) {
     const cmd = payload.split(',');
-    if (cmd.length != 4) {
-      console.error('Invalid command length');
-      return;
+    if (cmd.length != count) {
+      throw new Error(
+        `Invalid command length of ${cmd.length}, requred:${count} command: ${cmd}`
+      );
     }
+    return cmd;
+  }
+  setgameState(payload: string) {
+    const cmd = this.splitPayload(payload, 1);
+    const state = Number.parseInt(cmd[0]) ?? null;
+    if (state == null || isNaN(state)) return;
+    this.cuurentGameState = state;
+  }
+  battStat(payload: string) {
+    const cmd = this.splitPayload(payload, 4);
     const index = +cmd[0];
     const battLevel = +cmd[1];
     const battVoltage = +cmd[2];
@@ -143,26 +220,29 @@ export class GameManagerService {
     this.setPodium(index, { battLevel, battVoltage, isCharging });
   }
   podiumPlacement(payload: string) {
-    const cmd = payload.split(',');
-    if (cmd.length != 2) {
-      console.error('Invalid command length');
-      return;
-    }
+    const cmd = this.splitPayload(payload, 2);
     const index = +cmd[0];
     const placing = +cmd[1];
     this.buttonPlacing[index] = placing;
-    this.setToAllPodiums({ ledState: LEDState.OFF }, { exclude: [index] });
+    if (placing == 0)
+      this.setToAllPodiums({ ledState: LEDState.OFF }, { exclude: [index] });
   }
   podiumAdded(payload: string) {
-    const cmd = payload.split(',');
-    if (cmd.length != 2) {
-      console.error('Invalid command length');
-      return;
-    }
+    const cmd = this.splitPayload(payload, 3);
     const index = +cmd[0];
     console.log(`processing podium ${index}`);
     const status = dnrSeverity[+cmd[1]];
-    this.setPodium(index, { dnr: status });
+    const macAddr = cmd[2];
+    const localStrPod = window.localStorage.getItem(macAddr);
+    const podium = JSON.parse(localStrPod);
+    this.setPodium(index, { ...podium, dnr: status, macAddr });
+  }
+  savePodiumState(podium: Podium, macAddr: string = null) {
+    if (macAddr) podium.macAddr = macAddr;
+    window.localStorage.setItem(
+      macAddr ?? podium.macAddr,
+      JSON.stringify(podium)
+    );
   }
   dnrState() {}
 }

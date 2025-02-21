@@ -10,12 +10,12 @@ import {
   ViewChild,
 } from '@angular/core';
 import { Observable } from 'rxjs';
-import { LoadingComponent } from 'src/app/templates/async/loading/loading.component';
 import { AsyncDirective } from './acync.directive';
-import { EmptyContentComponent } from 'src/app/templates/async/empty/empty/empty-content.component';
-import { NotFoundComponent } from 'src/app/pages/not-found/not-found.component';
 import { LoadingViews } from './async-views';
 import { CommonModule } from '@angular/common';
+import { LoadingComponent } from '../../templates/async/loading/loading.component';
+import { EmptyContentComponent } from '../../templates/async/empty/empty/empty-content.component';
+import { NotFoundComponent } from '../../pages/not-found/not-found.component';
 export type asyncStatus = 'loaded' | 'loading' | 'error' | 'notFound' | 'empty';
 
 export interface AsyncViews {
@@ -27,13 +27,13 @@ export interface AsyncViews {
 
 /**
  * `@Input() status` the state of the async
- * 
+ *
  * `@Input() data` automatically determines state by providing an `observable` that is in these states
  *
  *  - null - Not Found
  *  - undefined - Loading
  *  - not null - Loaded
- * 
+ *
  * `@Input() views` views to show when in a state
  */
 @Component({

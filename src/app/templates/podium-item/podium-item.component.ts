@@ -53,6 +53,7 @@ export class PodiumItemComponent {
     return this.podiumPlacement + 1;
   }
   @Output() onSpotlight = new EventEmitter<void>();
+  @Output() onPodiumChange = new EventEmitter<Podium>();
   get readableIndex() {
     return this.index + 1;
   }
@@ -66,5 +67,9 @@ export class PodiumItemComponent {
       color: podiumStatusColor[this.podium.dnr] ?? 'danger',
       title: this.podium?.dnr ?? 'disconnected',
     };
+  }
+  onTitleChange(str){
+    console.log("ASDASDJHALKSBDLHAFGSDJHAVKUYF")
+    this.onPodiumChange.emit(this.podium);
   }
 }
