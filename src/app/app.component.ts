@@ -1,10 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
-import { NavBarComponent } from './templates/nav-bar/nav-bar.component';
+import { ToastsContainer } from "./utilities/services/toast/toasts-container.component";
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, RouterOutlet, NavBarComponent],
+  imports: [CommonModule, RouterOutlet, ToastsContainer],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })

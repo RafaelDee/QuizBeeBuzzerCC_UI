@@ -4,6 +4,6 @@ export const environment = {
   // server
   // a dbVersionHandler not per object
   databaseVersion: 0.1,
-  appName: 'ACCESS',
-  webName: 'ACCESS',
+  appName: 'TIP ACCESS',
+  webName: 'TIP ACCESS',
 };

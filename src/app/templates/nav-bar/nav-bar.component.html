@@ -6,8 +6,15 @@
   }"
 >
   <div class="container-fluid">
-    <a class="navbar-brand d-flex align-content-center align-items-center" [routerLink]="['/']">
-      <img class="invert" [ngClass]="{ 'd-none': titleType == 'title' }" src="/assets/images/applogo.png" height="30" />
+    <a
+      class="navbar-brand d-flex align-content-center align-items-center"
+    >
+      <img
+        class="invert me-2"
+        [ngClass]="{ 'd-none': titleType == 'title' }"
+        src="/assets/images/applogo.png"
+        height="30"
+      />
       {{ titleType != "logo" ? title : "" }}
     </a>
     <button
@@ -20,7 +27,12 @@
     >
       <span class="navbar-toggler-icon"></span>
     </button>
-    <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbarLabel">
+    <div
+      class="offcanvas offcanvas-end"
+      tabindex="-1"
+      id="offcanvasNavbar"
+      aria-labelledby="offcanvasNavbarLabel"
+    >
       <ng-template [ngTemplateOutlet]="content"></ng-template>
     </div>
   </div>
@@ -49,22 +61,31 @@
           data-bs-target="#offcanvasNavbar"
           role="button"
           routerLinkActive="active"
+          (click)="nav.routeOpenNewWindow ? openRouteBlank(nav) : null"
           [routerLinkActiveOptions]="{ exact: nav.routeActiveExact ?? false }"
-          [routerLink]="nav.route"
+          [routerLink]="nav.routeOpenNewWindow ? null : ['/', nav.route]"
         >
           <span>
             <i class="fa-lg" [class]="nav.icon"></i>
             {{ nav.name }}
           </span>
         </a>
-        <ng-template *ngIf="nav.children" [ngTemplateOutlet]="navItemStack" [ngTemplateOutletContext]="{ nav: nav }"></ng-template>
+        <ng-template
+          *ngIf="nav.children"
+          [ngTemplateOutlet]="navItemStack"
+          [ngTemplateOutletContext]="{ nav: nav }"
+        ></ng-template>
       </li>
     </ul>
     <hr />
     <div class="navbar-right row g-0" style="align-items: center">
       <div class="col-auto order-1">
         <div class="dropdown theme" data-bs-display="static">
-          <a class="nav-link p-1 theme-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+          <a
+            class="nav-link p-1 theme-toggle"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
             <i
               class="fa-solid fa-lg"
               [class]="getIsDarkThemed() ? 'fa-moon' : 'fa-sun'"
@@ -74,18 +95,35 @@
           </a>
           <ul class="dropdown-menu dropdown-menu-end">
             <li>
-              <a class="dropdown-item" (click)="setDark(null)" data-bs-dismiss="offcanvas" data-bs-target="#offcanvasNavbar">Auto</a>
+              <a
+                class="dropdown-item"
+                (click)="setDark(null)"
+                data-bs-dismiss="offcanvas"
+                data-bs-target="#offcanvasNavbar"
+                >Auto</a
+              >
             </li>
             <li>
-              <a class="dropdown-item" (click)="setDark(true)" data-bs-dismiss="offcanvas" data-bs-target="#offcanvasNavbar">Dark</a>
+              <a
+                class="dropdown-item"
+                (click)="setDark(true)"
+                data-bs-dismiss="offcanvas"
+                data-bs-target="#offcanvasNavbar"
+                >Dark</a
+              >
             </li>
             <li>
-              <a class="dropdown-item" (click)="setDark(false)" data-bs-dismiss="offcanvas" data-bs-target="#offcanvasNavbar">Light</a>
+              <a
+                class="dropdown-item"
+                (click)="setDark(false)"
+                data-bs-dismiss="offcanvas"
+                data-bs-target="#offcanvasNavbar"
+                >Light</a
+              >
             </li>
           </ul>
         </div>
       </div>
-
     </div>
   </div>
 
@@ -113,7 +151,7 @@
             routerLinkActive="active"
             [routerLinkActiveOptions]="{ exact: nav.routeActiveExact ?? false }"
             aria-current="page"
-            [routerLink]="nav.route"
+            [routerLink]="['/', nav.route]"
           >
             <span>
               <i class="fa-lg" [class]="nav.icon"></i>
@@ -134,4 +172,7 @@
     </span>
   </ng-template>
 </ng-template>
-<div class="navbar-offset" [ngClass]="{ 'navbar-transparent': allowTopTransparency }"></div>
+<div
+  class="navbar-offset"
+  [ngClass]="{ 'navbar-transparent': allowTopTransparency }"
+></div>

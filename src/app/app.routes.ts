@@ -6,7 +6,7 @@ import { SerialConnectionGuard } from './utilities/guards/SerialConnection.guard
 import { NotFoundComponent } from './pages/not-found/not-found.component';
 import { QuizEditorComponent } from './pages/quiz-editor/quiz-editor.component';
 
-export const routes: Routes = [
+export const routes: CustomRoutes = [
   { path: '', pathMatch: 'full', component: SetupComponent },
   {
     path: 'main',
@@ -19,12 +19,7 @@ export const routes: Routes = [
   },
   {
     path: 'sec_scr',
-    component: SecondScreenComponent,
-  },
-  {
-    path: '404',
-    component: SecondScreenComponent,
-    canActivate: [SerialConnectionGuard],
+    component: SecondScreenComponent,data:{navItem:{name:'Points',routeOpenNewWindow:true,icon:'fa-solid fa-arrow-up-right-from-square'}}
   },
   { path: '404', component: NotFoundComponent, title: '404!' },
   { path: '**', redirectTo: '404' },
@@ -44,6 +39,7 @@ export interface NavItem {
   name?: string;
   title?: string;
   route?: string;
+  routeOpenNewWindow?:boolean;
   routeActiveExact?: boolean;
   icon?: string;
   children?: NavItem[];

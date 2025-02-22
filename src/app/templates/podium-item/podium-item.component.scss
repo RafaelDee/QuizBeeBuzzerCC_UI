@@ -7,20 +7,33 @@
   height: 100%;
   aspect-ratio: 16/4;
 }
-[class*="bg-"] {
-  --bs-heading-color: white;
-  color: white ;
 
-  &.bg-warning,
-  &.bg-info {
-    --bs-heading-color: black;
-    color: black ;
-  }
-}
 .card-body {
-  > * {
+  > *:not(:last-child) {
     margin-bottom: 0.5rem;
   }
+}
+@keyframes gradient-move {
+  0% {
+    background-position: 100% 50%;
+  }
+  50% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+.podium {
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.moving-gradient {
+  width: 100%;
+  height: 100vh;
+  background: linear-gradient(90deg, var(--bs-secondary)24%, var(--bs-warning), var(--bs-secondary) 79%);
+  background-size: 300% 100%;
+  animation: gradient-move 1s infinite linear;
 }
 
 $lightning-size: 18px;
@@ -53,7 +66,7 @@ $lightning-size: 18px;
       content: "";
       display: inline-block;
       position: absolute;
-      margin: 0px 0px 0 -4.5px;
+      margin: 0px 0px 0 -5px;
       z-index: 1;
       filter: brightness(2) invert(1) hue-rotate(214deg);
     }

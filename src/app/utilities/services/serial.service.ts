@@ -94,7 +94,13 @@ export class SerialService {
   connectionStatus = new BehaviorSubject<ConnectionStatus>('disconnected');
   private serial: Serial;
   channel: BroadcastChannel;
-  private isLeader = new BehaviorSubject<boolean>(null);
+  private _isLeader = new BehaviorSubject<boolean>(null);
+  public get isLeader() {
+    return this._isLeader;
+  }
+  private set isLeader(value) {
+    this._isLeader = value;
+  }
   private channelMessage = new BehaviorSubject<InterConnectPacket>(null);
   constructor() {
     this.channel = new BroadcastChannel('sync_channel_serial-' + pairKey);

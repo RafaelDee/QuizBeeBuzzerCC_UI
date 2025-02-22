@@ -4,7 +4,7 @@
 //@use "bootstrap/scss/bootstrap";
 //IMPORT VIA angular.json
 /* You can add global styles to this file, and also import other style files */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 // Import functions first (required)
 //@use "functions";
 
@@ -16,24 +16,28 @@
 
 } */
 :root {
-  --bs-body-font-family: 'Poppins', sans-serif!important;
+  --bs-body-font-family: "Poppins", sans-serif !important;
   --fullscreenH: calc(100vh - var(--navbarH));
   --navbarH: 56px;
   --color-primary: #c1dafe;
 }
-router-outlet + *{
+//why??
+/* router-outlet + * {
   padding-bottom: 100px;
-}
+} */
 .html,
 body,
 app-root {
   min-height: 100vh !important;
+  display: block;
   height: -webkit-fill-available;
   font-size: 0.9em;
 }
-.form-group.required .control-label:after, .form-label.required:after, .required:after{
-  content:"*";
-  color:red;
+.form-group.required .control-label:after,
+.form-label.required:after,
+.required:after {
+  content: "*";
+  color: red;
 }
 .card {
   color: var(--bs-emphasis-color) !important;
@@ -57,7 +61,7 @@ iframe body {
     display: inline;
     display: -webkit-box;
     text-wrap: wrap;
-    line-clamp:$i; /* Standard property */
+    line-clamp: $i; /* Standard property */
     -webkit-line-clamp: $i; /* WebKit-based browsers */
     -webkit-box-orient: vertical;
     white-space: break-spaces;
@@ -73,7 +77,7 @@ input::-webkit-inner-spin-button {
 }
 
 /* Firefox */
-input[type=number] {
+input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield;
 }
@@ -105,7 +109,7 @@ input[type=number] {
   margin-right: -1px !important;
 }
 
-.fullscreenH{
+.fullscreenH {
   height: var(--fullscreenH);
 }
 .fullscreen {
@@ -127,21 +131,25 @@ app-home {
 
 //END
 
-
-
-html, body { height: 100%; }
+html,
+body {
+  height: 100%;
+}
 //TOOD: migrate to speperate class, use theme of apexcharts instead
-.apexcharts-legend-marker,.apexcharts-legend-text{
+.apexcharts-legend-marker,
+.apexcharts-legend-text {
   color: initial !important;
 }
-apx-chart text{
-  fill: var(--bs-light-text-emphasis);;
+apx-chart text {
+  fill: var(--bs-light-text-emphasis);
 }
-apx-chart .apexcharts-tooltip-title{
+apx-chart .apexcharts-tooltip-title {
   background: var(--bs-body-bg) !important;
-}apx-chart .apexcharts-tooltip{
+}
+apx-chart .apexcharts-tooltip {
   background: var(--bs-body-bg) !important;
   color: initial !important;
   border-color: var(--bs-border-color);
 }
+
 

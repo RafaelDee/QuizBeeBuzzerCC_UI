@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { bsColor } from 'src/app/bootstrap_plus/ts/bootstrap';
+import { bsColor } from '../../../bootstrap_plus/ts/bootstrap';
 export interface ToastParams {
   delay?: number;
   color?: bsColor;

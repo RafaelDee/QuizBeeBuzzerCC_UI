@@ -1,21 +1,26 @@
 <div class="card">
   <div class="card-body d-flex flex-column align-items-center">
     <div class="d-flex justify-content-between align-items-center w-100">
-      <div>
+      @let battLevel = (podium.isCharging?null:podium.battLevel)??0;
+      <div class="d-flex align-items-center">
         <div class="battery">
           <div [ngClass]="{ 'charge-logo': podium.isCharging }">
             <div
               class="battery-level"
               [ngClass]="{
-                'alert-batt': podium.battLevel < 50,
-                warn: podium.battLevel >= 50 && podium.battLevel < 65
+                'alert-batt': battLevel < 30,
+                warn: battLevel >= 30 && battLevel < 65
               }"
-              [style.height.%]="podium.battLevel"
+              [style.height.%]="battLevel"
             ></div>
           </div>
         </div>
+        <span class="ms-1">{{
+          podium.isCharging ? "CHG" : battLevel + "%"
+        }}</span>
       </div>
-      {{ podium.battVoltage }}mV @let s = status;
+
+      @let s = status;
       <span
         class="text-center tag m-0"
         [ngClass]="'bg-' + s.color"
@@ -52,32 +57,60 @@
           style="background-color: transparent; border-color: transparent"
           [ngStyle]="{ 'background-color': !npc.isClass ? npc.color : null }"
           [ngModel]="podiumTitle"
-          (ngModelChange)="podium.title = $event"
-          (change)="onTitleChange($event)"
+          (change)="podium.title = $event.target['value']; onTitleChange()"
           name="title"
-          placeholder="Podium#"
+          [placeholder]="'Podium ' + readableIndex"
         />
       </div>
     </div>
 
-    <h1 style="min-height: 3rem">
-      {{
-        podiumPlacement != null
-          ? podiumPlacementBase1 +
-            "" +
-            (ordinalIndicators[podiumPlacementBase1] ?? "th")
-          : ""
-      }}
-    </h1>
+    <span class="mb-0" *ngIf="debug">{{ podium.battVoltage }}mV </span>
+    <div
+      class="text-center d-flex flex-column"
+      [ngStyle]="{ visibility: podiumPlacement == null ? 'hidden' : 'visible' }"
+    >
+      <h1 class="mb-0" style="min-height: 3rem">
+        {{
+          podiumPlacement != null
+            ? podiumPlacementBase1 +
+              "" +
+              (ordinalIndicators[podiumPlacementBase1] ?? "th")
+            : ""
+        }}
+      </h1>
+      <label style="margin-top: -10px">Place</label>
+    </div>
+
     <div>
       <button
         type="button"
+        [disabled]="disableSpotlightBtn"
         class="btn btn-secondary"
         (click)="onSpotlight.emit()"
       >
         Spotlight
       </button>
     </div>
-    <h1></h1>
+    <div class="text-center d-flex flex-column">
+      <h2 *ngIf="!editPoints" class="mb-0">
+        {{ podium.scoring?.points ?? "0" | number }}
+      </h2>
+      <input
+        *ngIf="editPoints"
+        class="form-control fs-2 text-center p-0"
+        type="number"
+        [ngModel]="podium.scoring?.points ?? 0"
+        (change)="pointsChange($event)"
+        (keydown)="
+          (allowNegativePoints
+            ? ['e', 'E', '+']
+            : ['e', 'E', '+', '-']
+          ).includes($event['key'])
+            ? $event.preventDefault()
+            : null
+        "
+      />
+      <label style="margin-top: -5px">Points</label>
+    </div>
   </div>
 </div>

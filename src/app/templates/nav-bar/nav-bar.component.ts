@@ -14,18 +14,18 @@ import { additionalRoutes, CustomRoutes, NavItem } from '../../app.routes';
 import { CookieManager } from '../../utilities/cookieManager';
 import { capitalizeFirstLetter } from '../../utilities/common-utils';
 //import { AuthService } from 'src/app/utilities/services/auth.service';
-export type TitleType = 'logo'|'title'|'both';
+export type TitleType = 'logo' | 'title' | 'both';
 @Component({
   selector: 'nav-bar',
-  standalone:true,
-  imports:[CommonModule,AsyncComponent,RouterModule],
+  standalone: true,
+  imports: [CommonModule, AsyncComponent, RouterModule],
   templateUrl: './nav-bar.component.html',
   styleUrls: ['./nav-bar.component.scss'],
 })
 export class NavBarComponent implements OnInit {
   allowTopTransparency: boolean = false;
   isScrolled = false;
-  titleType: TitleType = 'title';
+  titleType: TitleType = 'both';
   enableTitleIcon = true;
   @HostListener('window:scroll', [])
   onWindowScroll() {
@@ -48,11 +48,7 @@ export class NavBarComponent implements OnInit {
   setDark = ThemeService.setDark;
   getIsDarkThemed = getIsDarkThemed;
   currentRoute = '';
-  constructor(
-    public router: Router,
-    private route: ActivatedRoute,
-  ) {
-
+  constructor(public router: Router, private route: ActivatedRoute) {
     router.events
       .pipe(filter((event) => event instanceof NavigationEnd))
       .subscribe((url) => {
@@ -60,7 +56,7 @@ export class NavBarComponent implements OnInit {
         this.allowTopTransparency = (() => {
           let child = this.route.firstChild;
           while (child) {
-            if(child.snapshot.title)title = child.snapshot.title
+            if (child.snapshot.title) title = child.snapshot.title;
             if (child.firstChild) {
               child = child.firstChild;
             } else if (
@@ -77,8 +73,10 @@ export class NavBarComponent implements OnInit {
         //console.log(`allow transparency? ${route.snapshot.data['navbarOpaque']??false}`)
 
         console.log(url);
-        this.currentRoute = capitalizeFirstLetter(title??environment['appName']);
-          /* const index = 0;
+        this.currentRoute = capitalizeFirstLetter(
+          title ?? environment['appName']
+        );
+        /* const index = 0;
           this.navItems
             .sort((a, b) => {
               let f = index + (b?.order ?? 0) - (index + (a?.order ?? 0));
@@ -89,6 +87,13 @@ export class NavBarComponent implements OnInit {
             ?.name ?? ''; */
       });
   }
+  openRouteBlank(navItem: NavItem) {
+    if (!navItem.route) return;
+    const url = this.router.serializeUrl(
+      this.router.createUrlTree([navItem.route])
+    );
+    window.open(url, '_blank');
+  }
   filterRoutes(navItem: NavItem[], user: any) {
     return navItem;
   }
@@ -97,22 +102,24 @@ export class NavBarComponent implements OnInit {
   }
   /**gets all navPaths that will be displayed in the navbar */
   async getAllNavbarRoutes(user: any) {
-    this.navItems = [...this.AdditionalnavItems,...this.getNavbarRoute(this.router.config, user),...this.checkNavItem(additionalRoutes,user)];
+    this.navItems = [
+      ...this.AdditionalnavItems,
+      ...this.getNavbarRoute(this.router.config, user),
+      ...this.checkNavItem(additionalRoutes, user),
+    ];
   }
   private getNavbarRoute(
     navitems: CustomRoutes,
     user?: any,
     parentRoute?: string
   ) {
-    let navItms:NavItem[] = [];
+    let navItms: NavItem[] = [];
     navitems.forEach((route) => {
       const compoundRoute = [parentRoute, route.path]
         .filter((f) => !!f)
         .join('/');
       const navItem = route?.data?.navItem;
       //if user is still loading, give all routes so it will be snappy
-      const hasPriv = true;
-      if (!hasPriv) return;
       if (navItem) {
         // eslint-disable-next-line no-useless-escape
         const regex = /[*\/:]/;
@@ -140,21 +147,25 @@ export class NavBarComponent implements OnInit {
       }
       //get children
       if (route.children) {
-        navItms = navItms.concat(this.getNavbarRoute(route.children, user, compoundRoute));
+        navItms = navItms.concat(
+          this.getNavbarRoute(route.children, user, compoundRoute)
+        );
       }
     });
     return navItms;
   }
-  checkNavItem(navItem:NavItem[],user:any){
-    return navItem?.map(route=>{
-      const hasPriv = true;
-          console.log(hasPriv)
-      if (!hasPriv) return null;
-      if(route.children){
-        route.children = this.checkNavItem(route.children,user);
-      }
-      return route;
-    })?.filter(f=>!!f)
+  checkNavItem(navItem: NavItem[], user: any) {
+    return navItem
+      ?.map((route) => {
+        const hasPriv = true;
+        console.log(hasPriv);
+        if (!hasPriv) return null;
+        if (route.children) {
+          route.children = this.checkNavItem(route.children, user);
+        }
+        return route;
+      })
+      ?.filter((f) => !!f);
   }
 }
 

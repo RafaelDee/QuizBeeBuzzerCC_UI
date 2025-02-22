@@ -1,6 +1,11 @@
 import { Injectable } from '@angular/core';
-import { ReceiveCommands, SendCommands, SerialService } from './serial.service';
-import { filter, firstValueFrom } from 'rxjs';
+import {
+  pairKey,
+  ReceiveCommands,
+  SendCommands,
+  SerialService,
+} from './serial.service';
+import { BehaviorSubject, filter, firstValueFrom, min } from 'rxjs';
 import { dnrSeverity, LEDState, Podium } from '../../values/podium.values';
 import { Router } from '@angular/router';
 import { constrain } from '../common-utils';
@@ -19,6 +24,17 @@ export enum GameState {
   OffAllPodium,
   Spotlight,
 }
+export const gameStateTitles: { [key in GameState]: string } = {
+  [GameState.Idle]: 'Idle',
+  [GameState.Lock]: 'Lock',
+  [GameState.QuizReady]: 'Ready',
+  [GameState.QuizAnswered]: 'Answered',
+  [GameState.CorrectAns]: 'Correct',
+  [GameState.WrongAns]: 'Wrong',
+  [GameState.SuspenseAns]: 'Suspense',
+  [GameState.OffAllPodium]: 'Off Podiums',
+  [GameState.Spotlight]: 'Spotlight',
+};
 export interface Command<T extends SendCommands | ReceiveCommands> {
   command: T;
   payload: string;
@@ -28,13 +44,18 @@ export interface Command<T extends SendCommands | ReceiveCommands> {
   providedIn: 'root',
 })
 export class GameManagerService {
+  channel: BroadcastChannel;
+
   podiums: Map<number, Podium> = new Map();
-  cuurentGameState: GameState = GameState.Idle;
+  curentGameState: GameState = GameState.Idle;
+  podiumInSpotlightIndex = new BehaviorSubject<number>(null);
+  podiumInSpotlight = new BehaviorSubject<Podium>(null);
   buttonPlacing: number[] = [];
   brightnessBtn = 255;
   brightnessFce = 255;
   constructor(private serial: SerialService, private router: Router) {
     this.init();
+    this.channel = new BroadcastChannel('sync_channel_points-' + pairKey);
   }
   private async init() {
     await firstValueFrom(
@@ -65,8 +86,8 @@ export class GameManagerService {
     podiumAData.macAddr = podBMac;
     podiumBData.macAddr = podAMac;
     if (podiumAData && podiumBData) {
-      this.podiums.set(podiumA, podiumBData);
-      this.podiums.set(podiumB, podiumAData);
+      this.updatePodiums(podiumA, podiumBData);
+      this.updatePodiums(podiumB, podiumAData);
     }
     this.savePodiumState(podiumAData, podAMac);
     this.savePodiumState(podiumBData, podBMac);
@@ -81,13 +102,13 @@ export class GameManagerService {
     const podiumAData = this.podiums.get(podiumA);
     const podiumBData = this.podiums.get(podiumB);
     if (podiumAData && podiumBData) {
-      this.podiums.set(podiumA, podiumBData);
-      this.podiums.set(podiumB, podiumAData);
+      this.updatePodiums(podiumA, podiumBData);
+      this.updatePodiums(podiumB, podiumAData);
     }
   } */
-  podiumInSpotlight = null;
+
   spotLightPodium(index: number) {
-    this.podiumInSpotlight = index;
+    this.podiumInSpotlightIndex.next(index);
     this.serial.write(SendCommands.SpotLightPodium, '' + index);
     this.setToAllPodiums({ ledState: LEDState.OFF }, { exclude: [index] });
     this.setToAllPodiums(
@@ -95,16 +116,18 @@ export class GameManagerService {
       { include: [index] }
     );
   }
+
   resetGame() {
     this.setToAllPodiums({ ledState: LEDState.StandBy });
     this.serial.write(SendCommands.ResetGameState);
     this.buttonPlacing = [];
-    this.podiumInSpotlight = null;
+    this.podiumInSpotlightIndex.next(null);
   }
   readyGame() {
     this.setToAllPodiums({ ledState: LEDState.StandBy });
     this.serial.write(SendCommands.ReadyGameState);
     this.buttonPlacing = [];
+    this.podiumInSpotlightIndex.next(null);
   }
   correctAns() {
     this.setToAllPodiums({ ledState: LEDState.CorrectAnswer });
@@ -113,6 +136,50 @@ export class GameManagerService {
   suspenseAns() {
     this.setToAllPodiums({ ledState: LEDState.SuspenseAnswer });
     this.serial.write(SendCommands.SuspenseGame);
+  }
+  updatePodiums(key: number, value: Podium) {
+    this.podiums.set(key, value);
+    this.channel.postMessage({ key, podium: value });
+  }
+  clearPodiumPoints() {
+    //this.setToAllPodiums({ scoring: { points: 0, streak: 0 } });
+    //cannot use setToAllPodiums at it links all scoring, tried removing link, but failed
+    const keys = Array.from(this.podiums.keys());
+    for (let i = 0; i < keys.length; i++) {
+      const index = keys[i];
+      /* const val = this.podiums.get(key);
+      const p = { ...val, ...podium };
+      this.updatePodiums(key, p);
+      this.savePodiumState(p); */
+      if (!this.podiums.has(index)) return;
+      const podium = this.podiums.get(index);
+      podium.scoring = { points: 0, streak: 0 };
+      this.savePodiumState(podium);
+      this.updatePodiums(index, podium);
+    }
+  }
+  setPodiumPoints(
+    index: number,
+    value: number,
+    allowNegatives: boolean,
+    addPoints: boolean = true
+  ) {
+    const scoring: {
+      points: number;
+      streak: number;
+    } = this.podiums.get(index)?.scoring ?? { points: 0, streak: 0 };
+    if (addPoints) scoring.points += value;
+    else scoring.points = value;
+    if (!allowNegatives) scoring.points = Math.max(scoring.points, 0);
+    this.setPodium(index, { scoring });
+  }
+  addStreak(index: number) {
+    const scoring: {
+      points: number;
+      streak: number;
+    } = this.podiums.get(index)?.scoring ?? { points: 0, streak: 0 };
+    scoring.streak++;
+    this.setPodium(index, { scoring });
   }
   /**from 0 to 255 */
   setPodiumBrightness(
@@ -148,20 +215,20 @@ export class GameManagerService {
     }
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i];
-      this.setPodium(key, podium);
+      this.setPodium(+key, { ...podium });
       /* const val = this.podiums.get(key);
       const p = { ...val, ...podium };
-      this.podiums.set(key, p);
+      this.updatePodiums(key, p);
       this.savePodiumState(p); */
     }
   }
   setPodium(index: number, podium: Partial<Podium> = null) {
-    if (!this.podiums.has(index)) this.podiums.set(index, new Podium());
+    if (!this.podiums.has(index)) this.updatePodiums(index, new Podium());
     if (podium == null) return;
 
     const pod = { ...this.podiums.get(index), ...podium };
     this.savePodiumState(pod);
-    this.podiums.set(index, pod);
+    this.updatePodiums(index, pod);
   }
 
   processCommand(command: Command<ReceiveCommands>) {
@@ -209,7 +276,7 @@ export class GameManagerService {
     const cmd = this.splitPayload(payload, 1);
     const state = Number.parseInt(cmd[0]) ?? null;
     if (state == null || isNaN(state)) return;
-    this.cuurentGameState = state;
+    this.curentGameState = state;
   }
   battStat(payload: string) {
     const cmd = this.splitPayload(payload, 4);
@@ -224,8 +291,9 @@ export class GameManagerService {
     const index = +cmd[0];
     const placing = +cmd[1];
     this.buttonPlacing[index] = placing;
-    if (placing == 0)
-      this.setToAllPodiums({ ledState: LEDState.OFF }, { exclude: [index] });
+    if (placing != 0) return;
+    this.podiumInSpotlightIndex.next(index);
+    this.setToAllPodiums({ ledState: LEDState.OFF }, { exclude: [index] });
   }
   podiumAdded(payload: string) {
     const cmd = this.splitPayload(payload, 3);

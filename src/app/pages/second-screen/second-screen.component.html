@@ -1,0 +1,10 @@
+<p
+  *ngFor="
+    let item of score.podiums | async | keyvalue;
+    let i = index;
+    trackBy: identify
+  "
+>
+  {{ item.value.title }}
+  {{item.value.scoring.points}}pts
+</p>

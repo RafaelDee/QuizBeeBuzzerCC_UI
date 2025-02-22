@@ -1,98 +1,381 @@
-<div class="container">
-  <div class="mb-4">
-    <button class="btn btn-primary" (click)="requestPort()">requestPort</button>
-    <button class="btn btn-primary" (click)="resetState()">reset state</button>
-    <button class="btn btn-primary" (click)="gameManager.sendSummary()">
-      Summary
-    </button>
-    <button class="btn btn-primary" (click)="ready()">READY</button>
-    <button class="btn btn-primary" (click)="edit = !edit">
-      {{ edit ? "Done" : "Edit" }}
-    </button>
-    <br />
-    <a class="btn btn-primary" [routerLink]="['/sec_scr']" target="_blank"
-      >SECOND SCREEN</a
-    >
-    @let connStatus = serialServ.connectionStatus|async;
-    <button
-      class="btn btn-primary"
-      [disabled]="connStatus == 'connecting'"
-      (click)="
-        connStatus == 'connected'
-          ? serialServ.disconnect(false)
-          : serialServ.connect()
-      "
-    >
-      {{ connStatus | titlecase }}
-    </button>
-    <button class="btn btn-primary" (click)="gameManager.correctAns()">
-      CORRECT
-    </button>
-    <button class="btn btn-primary" (click)="gameManager.wrongAns()">
-      WRONG
-    </button>
-    <button class="btn btn-primary" (click)="gameManager.suspenseAns()">
-      SUSPENSE
-    </button>
-  </div>
-  <p>
-    {{ GameState[gameManager.cuurentGameState] ?? "Unknown" }}|{{
-      gameManager.cuurentGameState
-    }}
-  </p>
-  <h5
-    [class.d-none]="gameManager.cuurentGameState != GameState.QuizReady"
-    class="text-danger"
-  >
-    ARMED
-  </h5>
-  <label for="customRange1" class="form-label">Brightness</label>
-  <input
-    type="range"
-    class="form-range"
-    id="customRange1"
-    min="0"
-    max="255"
-    [value]="gameManager.brightnessFce"
-    (change)="setBrightness($event)"
-  />
-  <div
-    cdkDropList
-    [draggable]="false"
-    cdkDropListOrientation="mixed"
-    (cdkDropListDropped)="drop($event)"
-    class="row row-cols-5 d-flex g-3 cdk-list"
-  >
+<nav-bar></nav-bar>
+<div class="d-flex flex-column fullscreen bg-body-secondary">
+  <div class="container-xl pt-3 mb-2 d-flex flex-column" style="flex-grow: 5">
+    @let podiumInSpotlightIndex = gameManager.podiumInSpotlightIndex|async;
+    <div class="mb-2">
+      <div
+        class="bg-body py-2 px-3 d-flex justify-content-between align-items-center rounded-2"
+      >
+        <div>
+          <label>Status</label>
+          <h3 class="mb-0" style="margin-top: -5px">
+            {{ gameStateTitles[gameManager.curentGameState] ?? "Unknown" }}
+          </h3>
+        </div>
+        <div *ngIf="podiumInSpotlightIndex != null" class="text-center">
+          <label>Spotlight</label>
+          <h3 class="mb-0" style="margin-top: -5px">
+            {{ podiumInSpotlightIndex + 1 }}
+          </h3>
+        </div>
+        <div class="d-flex align-items-center">
+          <div class="text-center me-3">
+            <label>Online</label>
+            <h3 class="mb-0" style="margin-top: -5px">N/A</h3>
+          </div>
+          <button class="btn btn-danger" (click)="disconnect()">
+            Disconnect
+          </button>
+        </div>
+      </div>
+      <div
+        *ngIf="!(serialServ.isLeader | async)"
+        class="bg-danger py-1 px-2 rounded-bottom-2"
+        style="margin-top: -5px"
+      >
+        Running In Relay Mode: Another Instance is Already Open, Please use the
+        First Instance to Prevent Issues
+      </div>
+    </div>
     <div
-      *ngFor="
-        let item of gameManager.podiums | keyvalue;
-        let i = index;
-        trackBy: identify
-      "
-      class="col-6 col-sm-4 col-md-3 col-lg-sp"
+      cdkDropList
+      [draggable]="false"
+      cdkDropListOrientation="mixed"
+      (cdkDropListDropped)="drop($event)"
+      class="row row-cols-lg-5 d-flex g-3 cdk-list align-content-center"
+      style="flex-grow: 1"
     >
-      <app-podium-item
-        class="cdk-item"
+      @let disableSpotlight = !disableSafteyReveal &&
+      (gameManager.curentGameState == GameState.SuspenseAns ||
+      gameManager.curentGameState == GameState.QuizReady);
+      <div
+        *ngFor="
+          let item of gameManager.podiums | keyvalue;
+          let i = index;
+          trackBy: identify
+        "
+        class="cdk-item col-6 col-sm-4 col-md-3 col-lg-sp"
         cdkDrag
         [cdkDragDisabled]="!edit"
-        [edit]="edit"
-        [podiumPlacement]="gameManager.buttonPlacing[i]"
-        [podium]="item.value"
-        [index]="i"
-        (onPodiumChange)="onTitleChange($event)"
-        (onSpotlight)="gameManager.spotLightPodium(item.key)"
-      ></app-podium-item>
-      {{ item.key }}
+      >
+        <app-podium-item
+          [disableSpotlightBtn]="disableSpotlight || pointsConfig.editAll"
+          [editPoints]="pointsConfig.editAll"
+          [edit]="edit"
+          [debug]="debugMode"
+          [podiumPlacement]="gameManager.buttonPlacing[i]"
+          [podium]="item.value"
+          [index]="i"
+          [allowNegativePoints]="pointsConfig.allowNegatives"
+          (onPodiumChange)="onTitleChange($event)"
+          (onSpotlight)="
+            gameManager.spotLightPodium(item.key); alertDimmedPodium()
+          "
+          (onPointsChange)="pointsChange(i,$event)"
+        ></app-podium-item>
+      </div>
     </div>
   </div>
-  {{ gameManager.podiumInSpotlight }}
-  <p>
-    {{
-      (serialServ.serialSupport | async)
-        ? "Supported Browser"
-        : "Not Supported Browser"
-    }}
-  </p>
-  <p>{{ connStatus | titlecase }}</p>
-  {{ gameManager.buttonPlacing | json }}
+  <div class="d-flex flex-column" style="min-height: 100%; flex-grow: 1">
+    <div class="d-flex justify-content-center align-content-bottom">
+      <div
+        [ngStyle]="{
+          visibility:
+            gameManager.curentGameState !== GameState.QuizReady
+              ? 'hidden'
+              : 'visible'
+        }"
+        class="bg-danger rounded-top-3 px-5 py-1"
+      >
+        <h3
+          class="mb-0"
+          style="
+            letter-spacing: 0.2rem;
+            font-family: monospace;
+            font-weight: bolder;
+          "
+        >
+          ARMED
+        </h3>
+      </div>
+    </div>
+    <div class="control-center bg-body" style="min-height: 100%; flex-grow: 1">
+      <div class="container-xl pt-3 px-3">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <div class="row g-3">
+              <div class="mb-3">
+                <label for="customRange1" class="form-label">Brightness</label>
+                @let brightness = +(gameManager.brightnessFce/2.55|
+                number:'1.0-0');
+                <div class="d-flex align-items-center">
+                  <h5
+                    class="mb-0 me-2"
+                    style="pointer-events: none; user-select: none"
+                  >
+                    {{ brightness }}%
+                  </h5>
+                  <input
+                    type="range"
+                    class="form-range"
+                    id="customRange1"
+                    min="0"
+                    max="255"
+                    [(ngModel)]="gameManager.brightnessFce"
+                    (change)="setBrightness($event)"
+                  />
+                </div>
+                <div
+                  class="text-warning text-center"
+                  *ngIf="brightness > batteryWarningTreshold"
+                >
+                  ⚠️ This will drain the battery faster
+                </div>
+              </div>
+
+              <div class="d-flex justify-content-between">
+                <button class="btn btn-primary" (click)="edit = !edit">
+                  {{ edit ? "Done" : "Edit" }}
+                </button>
+                <button
+                  class="btn"
+                  (click)="disableSafteyReveal = !disableSafteyReveal"
+                  [ngClass]="disableSafteyReveal ? 'btn-info' : 'btn-danger'"
+                >
+                  {{ disableSafteyReveal ? "Enable" : "Disable" }} Button Saftey
+                </button>
+              </div>
+              <div class="d-flex justify-content-between">
+                <button
+                  [ngStyle]="{
+                    visibility: debugMode ? 'visible' : 'hidden'
+                  }"
+                  class="btn btn-primary"
+                  (click)="gameManager.sendSummary(); alertDimmedPodium()"
+                >
+                  Summary
+                </button>
+                <button
+                  class="btn btn-secondary"
+                  (click)="debugMode = !debugMode"
+                >
+                  {{ debugMode ? "Disable" : "Enable" }} Debugger
+                </button>
+              </div>
+            </div>
+          </div>
+          <hr class="d-block d-md-none" />
+          <div class="col-md-4">
+            <div class="row g-3">
+              @let disabledRevealAnswer = !disableSafteyReveal &&
+              (gameManager.curentGameState == GameState.QuizReady);
+              <div class="col-6">
+                <button
+                  [disabled]="
+                    disabledRevealAnswer &&
+                    gameManager.curentGameState != GameState.CorrectAns
+                  "
+                  class="btn btn-success w-100"
+                  (click)="gameManager.correctAns(); alertDimmedPodium()"
+                >
+                  CORRECT
+                </button>
+              </div>
+              <div class="col-6">
+                <button
+                  [disabled]="
+                    disabledRevealAnswer &&
+                    gameManager.curentGameState != GameState.WrongAns
+                  "
+                  class="btn btn-danger w-100"
+                  (click)="gameManager.wrongAns(); alertDimmedPodium()"
+                >
+                  WRONG
+                </button>
+              </div>
+              <div>
+                <button
+                  [disabled]="disabledRevealAnswer"
+                  class="btn btn-secondary w-100"
+                  (click)="gameManager.suspenseAns(); alertDimmedPodium()"
+                >
+                  Suspense Answer
+                </button>
+              </div>
+              <div>
+                <button
+                  class="btn btn-warning w-100"
+                  (click)="ready(); alertDimmedPodium()"
+                  style="font-weight: 600"
+                >
+                  READY
+                </button>
+              </div>
+              <div>
+                <button
+                  class="btn btn-primary w-100"
+                  (click)="resetState(); alertDimmedPodium()"
+                >
+                  Reset State
+                </button>
+              </div>
+            </div>
+          </div>
+          <hr class="d-block d-md-none" />
+          @let btnPointsDisabled = gameManager.curentGameState ==
+          GameState.QuizReady || pointsConfig.selectedPodiumIndex == null || pointsConfig.selectedPodiumIndex == 'null';
+          <div class="col-md-4">
+            <div class="row gx-4 gy-2">
+              <div class="d-flex justify-content-between">
+                <button
+                  class="btn"
+                  [disabled]="!pointsConfig.editAll"
+                  [ngClass]="
+                    pointsConfig.allowNegatives ? 'btn-success' : 'btn-danger'
+                  "
+                  (click)="
+                    pointsConfig.allowNegatives = !pointsConfig.allowNegatives
+                  "
+                >
+                  <i
+                    class="fa-solid"
+                    [ngClass]="
+                      pointsConfig.allowNegatives ? 'fa-check' : 'fa-xmark'
+                    "
+                  ></i
+                  >{{ pointsConfig.allowNegatives ? " Allow" : " No" }} Negative
+                  Points
+                </button>
+                <button
+                  class="btn btn-danger"
+                  [disabled]="!pointsConfig.editAll"
+                  (click)="confirmClearPoints()"
+                >
+                  Clear
+                </button>
+                <button
+                  class="btn"
+                  [ngClass]="
+                    pointsConfig.editAll ? 'btn-success' : 'btn-secondary'
+                  "
+                  (click)="pointsConfig.editAll = !pointsConfig.editAll"
+                >
+                  <i
+                    class="fa-solid"
+                    [ngClass]="pointsConfig.editAll ? 'fa-check' : 'fa-pencil'"
+                  ></i
+                  >{{ pointsConfig.editAll ? " Done" : " All" }}
+                </button>
+              </div>
+              <div class="input-group">
+                <select
+                  class="form-select"
+                  id="inputGroupSelect04"
+                  aria-label="Example select with button addon"
+                  [(ngModel)]="pointsConfig.selectedPodiumIndex"
+                >
+                  <option [value]="null">NONE SELECTED</option>
+                  <option
+                    *ngFor="
+                      let item of gameManager.podiums | keyvalue;
+                      let i = index;
+                      trackBy: identify
+                    "
+                    [value]="i"
+                  >
+                    {{ item.value?.title ?? "Podium " + (i + 1) }}
+                  </option>
+                </select>
+                <button
+                  class="btn"
+                  [ngClass]="
+                    pointsConfig.autoSelect ? 'btn-success' : 'btn-danger'
+                  "
+                  (click)="toggleAutoSelect()"
+                >
+                  <i
+                    class="fa-solid"
+                    [ngClass]="
+                      pointsConfig.autoSelect ? 'fa-check' : 'fa-xmark'
+                    "
+                  ></i>
+                  Auto
+                </button>
+              </div>
+              <div class="col-6">
+                <div
+                  *ngFor="
+                    let points of pointsConfig.pointsPreset | slice : 0 : 3
+                  "
+                >
+                  <button
+                    [disabled]="btnPointsDisabled"
+                    class="btn btn-secondary w-100 mb-2"
+                    (click)="pointsConfig.pointsInput = points"
+                  >
+                    {{ points }}
+                  </button>
+                </div>
+              </div>
+              <div class="col-6">
+                <div
+                  *ngFor="
+                    let points of pointsConfig.pointsPreset | slice : 3 : 6
+                  "
+                >
+                  <button
+                    [disabled]="btnPointsDisabled"
+                    (click)="pointsConfig.pointsInput = points"
+                    class="btn btn-secondary w-100 mb-2"
+                  >
+                    {{ points }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="input-group">
+                <button
+                  type="button"
+                  class="btn btn-success"
+                  [disabled]="
+                    btnPointsDisabled ||
+                    !(pointsConfig.pointsInput ?? 0 == 0) ||
+                    pointsConfig.pointsInput == null
+                  "
+                  (click)="addPoints(pointsConfig.pointsInput)"
+                >
+                  Add
+                </button>
+
+                <input
+                  type="number"
+                  class="form-control"
+                  aria-label="Text input with segmented dropdown button"
+                  [ngModel]="pointsConfig.pointsInput"
+                  (ngModelChange)="pointsConfig.pointsInput = +$event"
+                  (keydown)="
+                    ['e', 'E', '+', '-'].includes($event['key'])
+                      ? $event.preventDefault()
+                      : null
+                  "
+                />
+                <button
+                  type="button"
+                  class="btn btn-danger"
+                  [disabled]="
+                    btnPointsDisabled ||
+                    !(pointsConfig.pointsInput ?? 0 == 0) ||
+                    pointsConfig.pointsInput == null
+                  "
+                  (click)="addPoints(-pointsConfig.pointsInput)"
+                >
+                  Sub
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>

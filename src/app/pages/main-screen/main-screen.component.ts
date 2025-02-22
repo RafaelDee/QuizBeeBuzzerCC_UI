@@ -15,7 +15,14 @@ import { SerialService } from '../../utilities/services/serial.service';
 import {
   GameManagerService,
   GameState,
+  gameStateTitles,
 } from '../../utilities/services/game-manager.service';
+import { NavBarComponent } from '../../templates/nav-bar/nav-bar.component';
+import { SimpleModalComponent } from '../../utilities/modal/modal-component/simple-modal.component';
+import { ModalService } from '../../utilities/services/modal.service';
+import { FormsModule } from '@angular/forms';
+import { ToastService } from '../../utilities/services/toast/toast.service';
+export class SoundFX {}
 @Component({
   selector: 'app-main-screen',
   imports: [
@@ -26,40 +33,34 @@ import {
     CdkDropList,
     CdkDrag,
     CdkDragHandle,
+    NavBarComponent,
+    FormsModule,
   ],
   templateUrl: './main-screen.component.html',
-  styles: `
-    :host {
-      display: block;
-    }
-    @media (min-width: 992px) {
-  .row-cols-5 > .col-lg-sp {
-    flex: 0 0 auto;
-    width: 20%;
-  }
-}
-
-.cdk-drag-preview {
-  box-sizing: border-box;
-  border-radius: 4px;
-  box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2),
-    0 8px 10px 1px rgba(0, 0, 0, 0.14), 0 3px 14px 2px rgba(0, 0, 0, 0.12);
-}
-
-.cdk-drag-placeholder {
-  opacity: 0;
-}
-.cdk-item {
-  overflow: hidden;
-}
-.cdk-drag-animating {
-  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
-}
-
-  `,
+  styleUrls: ['./main-screen.component.scss'],
 })
 export class MainScreenComponent implements OnInit {
+  pointsConfig: {
+    autoSelect: boolean;
+    selectedPodiumIndex: any;
+    pointsPreset: number[];
+    pointsInput: number;
+    editAll: boolean;
+    allowNegatives: boolean;
+  } = {
+    autoSelect: true,
+    selectedPodiumIndex: null,
+    pointsPreset: [50, 100, 150, 200, 250, 300],
+    pointsInput: 0,
+    editAll: false,
+    allowNegatives: true,
+  };
   title = 'BuzzerControlCenter';
+  batteryWarningTreshold = 75;
+  brightnessAlertTreshold = 5;
+  gameStateTitles = gameStateTitles;
+  debugMode = false;
+  disableSafteyReveal = false;
   private _edit = false;
   public get edit() {
     return this._edit;
@@ -74,15 +75,49 @@ export class MainScreenComponent implements OnInit {
   GameState = GameState;
   constructor(
     public serialServ: SerialService,
-    public gameManager: GameManagerService
+    public gameManager: GameManagerService,
+    private modal: ModalService,
+    private toast: ToastService
   ) {}
   ngOnInit(): void {
     this.gameManager.sendSummary();
+    this.gameManager.podiumInSpotlightIndex.subscribe((index) => {
+      if (this.pointsConfig.autoSelect)
+        this.pointsConfig.selectedPodiumIndex = index ?? null;
+    });
+  }
+  toggleAutoSelect() {
+    this.pointsConfig.autoSelect = !this.pointsConfig.autoSelect;
+    this.pointsConfig.selectedPodiumIndex =
+      this.gameManager.podiumInSpotlightIndex.value;
   }
   setBrightness(event: Event) {
     const brightness = +event.target['value'];
     if (brightness == null) return;
     this.gameManager.setPodiumBrightness(brightness, brightness);
+  }
+  addPoints(value: number) {
+    const points = value;
+    const index = this.pointsConfig.selectedPodiumIndex ?? null;
+    if (points == null || points == 0) return;
+    if (index == null || index < 0) return;
+    this.gameManager.setPodiumPoints(
+      +index,
+      points,
+      this.pointsConfig.allowNegatives,
+      true
+    );
+    this.pointsConfig.pointsInput = null;
+  }
+  isNumberKey(evt) {
+    var charCode = evt.which ? evt.which : evt.keyCode;
+    if (
+      charCode > 31 &&
+      (charCode < 48 || charCode > 57) &&
+      !['e', 'E', '+', '-'].includes(evt.key)
+    )
+      return false;
+    return true;
   }
   resetState() {
     this.gameManager.resetGame();
@@ -110,6 +145,44 @@ export class MainScreenComponent implements OnInit {
   ];
   drop(event: CdkDragDrop<string[]>) {
     this.gameManager.swapPodium(+event.previousIndex, +event.currentIndex);
+  }
+  async confirmClearPoints() {
+    await SimpleModalComponent.showMessage(
+      this.modal,
+      'Clearing Points',
+      `are you sure you want to <b class="text-danger">Clear Points</b>?`,
+      { title: 'Yes', params: { color: 'danger', dismiss: true } },
+      { title: 'No', params: { dismiss: true } }
+    );
+    this.gameManager.clearPodiumPoints();
+  }
+  async disconnect() {
+    await SimpleModalComponent.showMessage(
+      this.modal,
+      'Disconnecting',
+      `are you sure you want to <b class="text-danger">disconnect</b>?`,
+      { title: 'Disconnect', params: { color: 'danger', dismiss: true } },
+      { title: 'No', params: { dismiss: true } }
+    );
+    this.serialServ.disconnect(false);
+  }
+  pointsChange(index: number, value: number) {
+    this.gameManager.setPodiumPoints(
+      +index,
+      value,
+      this.pointsConfig.allowNegatives,
+      false
+    );
+  }
+  alertDimmedPodium() {
+    const brightnessPrc = Math.round(this.gameManager.brightnessFce / 2.55);
+    if (brightnessPrc <= this.brightnessAlertTreshold) {
+      this.toast.showSimple(
+        'Reminder',
+        `The Podium Brightness is Dim! (at ${brightnessPrc}%)`,
+        'warning'
+      );
+    }
   }
   /* drop(event: CdkDragDrop<string[]>) {
     const test = Array.from(this.gameManager.podiums.keys());

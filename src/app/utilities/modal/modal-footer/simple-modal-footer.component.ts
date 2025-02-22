@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnInit, Output, Type } from '@angular/core';
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
-import { bsColor } from 'src/app/bootstrap_plus/ts/bootstrap';
+import { bsColor } from '../../../bootstrap_plus/ts/bootstrap';
 export interface ButtonParams{
   color?:bsColor;
   dismiss?:boolean;

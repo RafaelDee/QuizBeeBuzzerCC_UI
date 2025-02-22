@@ -12,14 +12,14 @@ export class Podium {
 }
 export const dnrSeverity = [
   'connected',
-  'not responding',
+  'unresponsive',
   'disconnected',
 ] as const;
 export type DnrSeverity = (typeof dnrSeverity)[number];
 export const podiumStatusColor: { [status in DnrSeverity]: bsColor } = {
   connected: 'success',
   disconnected: 'danger',
-  'not responding': 'warning',
+  'unresponsive': 'warning',
 };
 
 export enum LEDState
