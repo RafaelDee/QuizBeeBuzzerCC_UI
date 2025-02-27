@@ -1,10 +1,74 @@
-<p
-  *ngFor="
-    let item of score.podiums | async | keyvalue;
-    let i = index;
-    trackBy: identify
-  "
+<div
+  class="row g-2 py-5 px-3 m-0 rol-cols-5 h-100 position-relative"
+  [ngStyle]="{ 'background-image': 'url(' + (score.bkgImg | async) + ')' }" style="background-position: center;background-repeat: no-repeatl;background-size: cover;"
 >
-  {{ item.value.title }}
-  {{item.value.scoring.points}}pts
-</p>
+@let txtFormat = score?.textFormat | async;
+@let txtFormatStyle = txtFormat?{ 'color': txtFormat.color}:null;
+  <ng-container
+    *ngFor="let item of podiums; let i = index; identifyBy: identify"
+  >
+    <div
+      *animate="'1000ms ease-in-out'"
+      class="col col-sp mt-0"
+      style="
+        flex: 0 0 auto;
+        width: 20%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        top: 0px !important;
+      "
+    >
+      <div class="d-flex flex-column align-items-center mb-2">
+        <img
+          class="rounded-circle"
+          [src]="item.value.photo"
+          style="
+            max-width: 80%;
+            width: 500px;
+            aspect-ratio: 1/1;
+            max-height: 500px;
+            object-fit: cover;
+            object-position: center;
+            outline: white10px solid;
+          "
+        />
+      </div>
+      <h1 class="text-clamp-1 m-0 text-center text-shadow" [ngStyle]="txtFormatStyle">
+        {{ item.value.title ?? "PODIUM " + (item.key + 1) }}
+      </h1>
+      @let points =item.value.scoring?.points ;
+      <div class="text-center d-flex flex-column">
+        <h2 class="mb-0 text-shadow" [ngStyle]="txtFormatStyle">
+          {{ points ?? "0" | number }}
+        </h2>
+        <label style="margin-top: -5px " class="text-shadow" [ngStyle]="txtFormatStyle">Points</label>
+      </div>
+    </div></ng-container
+  >
+</div>
+
+<!-- <div class="d-flex">
+  @let order = score.podiums | async | keyvalue | orderBy :
+  'value.scoring.points' : true : false;
+  <div *ngFor="let item of order; let i = index; trackBy: identify">
+    <div *animate="'400ms ease-in-out'">
+      <img
+        [src]="item.value.photo"
+        style="
+          width: 100px;
+          height: 100px;
+          object-fit: contain;
+          object-position: center;
+        "
+      />
+      <p>
+        {{ item.value.title }}
+        {{ item.value.scoring.points }}pts
+      </p>
+    </div>
+  </div>
+  {{ order | json }}
+</div>
+ -->

@@ -33,7 +33,7 @@
   height: 100vh;
   background: linear-gradient(90deg, var(--bs-secondary)24%, var(--bs-warning), var(--bs-secondary) 79%);
   background-size: 300% 100%;
-  animation: gradient-move 1s infinite linear;
+  animation: gradient-move 0.7s infinite linear;
 }
 
 $lightning-size: 18px;

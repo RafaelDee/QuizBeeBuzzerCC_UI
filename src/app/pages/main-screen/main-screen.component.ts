@@ -22,7 +22,7 @@ import { SimpleModalComponent } from '../../utilities/modal/modal-component/simp
 import { ModalService } from '../../utilities/services/modal.service';
 import { FormsModule } from '@angular/forms';
 import { ToastService } from '../../utilities/services/toast/toast.service';
-export class SoundFX {}
+
 @Component({
   selector: 'app-main-screen',
   imports: [
@@ -45,14 +45,12 @@ export class MainScreenComponent implements OnInit {
     selectedPodiumIndex: any;
     pointsPreset: number[];
     pointsInput: number;
-    editAll: boolean;
     allowNegatives: boolean;
   } = {
     autoSelect: true,
     selectedPodiumIndex: null,
     pointsPreset: [50, 100, 150, 200, 250, 300],
     pointsInput: 0,
-    editAll: false,
     allowNegatives: true,
   };
   title = 'BuzzerControlCenter';
@@ -122,8 +120,8 @@ export class MainScreenComponent implements OnInit {
   resetState() {
     this.gameManager.resetGame();
   }
-  onTitleChange(podium: Podium) {
-    this.gameManager.savePodiumState(podium);
+  onPodiumChange(podium: Podium,index:number) {
+    this.gameManager.onPodiumUpdate(podium,index);
   }
   ready() {
     this.gameManager.readyGame();

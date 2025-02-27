@@ -1,0 +1,103 @@
+<nav-bar></nav-bar>
+<div class="container mt-4">
+  <h3>Settings</h3>
+  <div class="mb-3">
+    <div class="d-flex align-items-center w-100 mb-2">
+      <h4 class="mb-0 me-3 white-space-nowrap">Second Screen Bkg.</h4>
+      <hr class="flex-grow-1" />
+    </div>
+    <div>
+      <div style="height: 30%; max-height: 30%; position: relative">
+        <div class="position-absolute top-0 left-0" style="z-index: 10">
+          <button class="btn btn-primary ms-2 mt-2" (click)="uploadImage()">
+            <i class="fa-solid fa-arrow-up-from-bracket"></i>
+          </button>
+        </div>
+        <app-second-screen
+          [previewMode]="true"
+          class="mb-3"
+          style="
+            height: 30%;
+            max-height: 30%;
+            border: var(--bs-body-color) 2px solid;
+          "
+        ></app-second-screen>
+      </div>
+      <div>
+        <div class="mb-3">
+          <label for="exampleInputEmail1" class="form-label">Text Color</label>
+          <input
+            type="color"
+            class="form-control"
+            [ngModel]="gameManager?.settings?.secondScrTxtColor"
+            (ngModelChange)="
+              gameManager.sendSettingsConfig({ secondScrTxtColor: $event })
+            "
+            (change)="
+              gameManager.setSettings({
+                secondScrTxtColor: $event.target['value']
+              })
+            "
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="audio-group mb-4">
+    <div class="d-flex align-items-center w-100 mb-2">
+      <h4 class="mb-0 me-3 white-space-nowrap">Auido</h4>
+      <hr class="flex-grow-1" />
+    </div>
+
+    <div class="row g-2">
+      <div class="col-12">
+        <div class="mb-3">
+          <label for="customRange1" class="form-label">Master Volume</label>
+          @let mastervolume = +(soundFx.masterVolume*100|number:'1.0-0');
+          <div class="d-flex align-items-center">
+            <h5
+              class="mb-0 me-2"
+              style="pointer-events: none; user-select: none"
+            >
+              {{ mastervolume }}%
+            </h5>
+            <input
+              type="range"
+              class="form-range"
+              id="customRange1"
+              min="0"
+              max="100"
+              [ngModel]="soundFx.masterVolume * 100"
+              (ngModelChange)="soundFx.masterVolume = $event / 100"
+            />
+          </div>
+        </div>
+      </div>
+      <div *ngFor="let sfx of soundFx.audioEffects | keyvalue" class="col-6">
+        <div class="mb-3">
+          <label for="customRange1" class="form-label"
+            >{{ sfx.key | titlecase }} Volume</label
+          >
+          @let sfxVolume = +(sfx.value.volume*100|number:'1.0-0');
+          <div class="d-flex align-items-center">
+            <h5
+              class="mb-0 me-2"
+              style="pointer-events: none; user-select: none"
+            >
+              {{ sfxVolume }}%
+            </h5>
+            <input
+              type="range"
+              class="form-range"
+              id="customRange1"
+              min="0"
+              max="100"
+              [ngModel]="sfxVolume"
+              (ngModelChange)="soundFx.setAudioVolume(sfx.key, $event / 100)"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

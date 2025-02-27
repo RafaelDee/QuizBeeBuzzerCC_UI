@@ -59,19 +59,19 @@
         [cdkDragDisabled]="!edit"
       >
         <app-podium-item
-          [disableSpotlightBtn]="disableSpotlight || pointsConfig.editAll"
-          [editPoints]="pointsConfig.editAll"
+          [disableSpotlightBtn]="disableSpotlight || edit"
+          [editPoints]="edit"
           [edit]="edit"
           [debug]="debugMode"
           [podiumPlacement]="gameManager.buttonPlacing[i]"
           [podium]="item.value"
           [index]="i"
           [allowNegativePoints]="pointsConfig.allowNegatives"
-          (onPodiumChange)="onTitleChange($event)"
+          (onPodiumChange)="onPodiumChange($event, i)"
           (onSpotlight)="
             gameManager.spotLightPodium(item.key); alertDimmedPodium()
           "
-          (onPointsChange)="pointsChange(i,$event)"
+          (onPointsChange)="pointsChange(i, $event)"
         ></app-podium-item>
       </div>
     </div>
@@ -134,8 +134,16 @@
               </div>
 
               <div class="d-flex justify-content-between">
-                <button class="btn btn-primary" (click)="edit = !edit">
-                  {{ edit ? "Done" : "Edit" }}
+                <button
+                  class="btn"
+                  [ngClass]="edit ? 'btn-success' : 'btn-secondary'"
+                  (click)="edit = !edit"
+                >
+                  <i
+                    class="fa-solid"
+                    [ngClass]="edit ? 'fa-check' : 'fa-pencil'"
+                  ></i
+                  >{{ edit ? " Done" : " Edit" }}
                 </button>
                 <button
                   class="btn"
@@ -223,13 +231,14 @@
           </div>
           <hr class="d-block d-md-none" />
           @let btnPointsDisabled = gameManager.curentGameState ==
-          GameState.QuizReady || pointsConfig.selectedPodiumIndex == null || pointsConfig.selectedPodiumIndex == 'null';
+          GameState.QuizReady || pointsConfig.selectedPodiumIndex == null ||
+          pointsConfig.selectedPodiumIndex == 'null';
           <div class="col-md-4">
             <div class="row gx-4 gy-2">
               <div class="d-flex justify-content-between">
                 <button
                   class="btn"
-                  [disabled]="!pointsConfig.editAll"
+                  [disabled]="!edit"
                   [ngClass]="
                     pointsConfig.allowNegatives ? 'btn-success' : 'btn-danger'
                   "
@@ -244,27 +253,14 @@
                     "
                   ></i
                   >{{ pointsConfig.allowNegatives ? " Allow" : " No" }} Negative
-                  Points
+                  Pts.
                 </button>
                 <button
                   class="btn btn-danger"
-                  [disabled]="!pointsConfig.editAll"
+                  [disabled]="!edit"
                   (click)="confirmClearPoints()"
                 >
-                  Clear
-                </button>
-                <button
-                  class="btn"
-                  [ngClass]="
-                    pointsConfig.editAll ? 'btn-success' : 'btn-secondary'
-                  "
-                  (click)="pointsConfig.editAll = !pointsConfig.editAll"
-                >
-                  <i
-                    class="fa-solid"
-                    [ngClass]="pointsConfig.editAll ? 'fa-check' : 'fa-pencil'"
-                  ></i
-                  >{{ pointsConfig.editAll ? " Done" : " All" }}
+                  Clear Pts.
                 </button>
               </div>
               <div class="input-group">

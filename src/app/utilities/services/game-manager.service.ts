@@ -5,10 +5,17 @@ import {
   SendCommands,
   SerialService,
 } from './serial.service';
+import { openDB } from 'idb';
 import { BehaviorSubject, filter, firstValueFrom, min } from 'rxjs';
 import { dnrSeverity, LEDState, Podium } from '../../values/podium.values';
 import { Router } from '@angular/router';
 import { constrain } from '../common-utils';
+import {
+  PointsSystemReceiveCommands,
+  PointsSystemSendCommandsType,
+} from './scoring.service';
+import { SoundEffects, SoundFXService } from './soundFX.service';
+import { IndexedDbService } from './indexed-db.service';
 export enum GameState {
   // used when nothing is happening, resets the podium interface
   Idle,
@@ -39,13 +46,47 @@ export interface Command<T extends SendCommands | ReceiveCommands> {
   command: T;
   payload: string;
 }
+export interface AudioSettings {
+  master: number;
+}
 
+export type SoundEffectsSettings = {
+  [key in SoundEffects]: number;
+};
+export interface SettingsConfig {
+  secondScrBkg: string;
+  secondScrTxtColor: string;
+  audio: Partial<AudioSettings & SoundEffectsSettings>;
+}
 @Injectable({
   providedIn: 'root',
 })
 export class GameManagerService {
   channel: BroadcastChannel;
-
+  channelRec: BroadcastChannel;
+  private _settings: SettingsConfig;
+  public get settings() {
+    return this._settings;
+  }
+  setSettings(settings: Partial<SettingsConfig>) {
+    this._settings = { ...this._settings, ...settings };
+    this.indexedDb.setItem('settings', JSON.stringify(this._settings));
+    this.sendSettingsConfig(settings);
+  }
+  sendSettingsConfig(settings: Partial<SettingsConfig>) {
+    if (settings?.secondScrBkg != null) {
+      this.channel.postMessage({
+        command: 'updateBkg',
+        payload: { secondScrBkg: settings.secondScrBkg },
+      });
+    }
+    if (settings?.secondScrTxtColor != null) {
+      this.channel.postMessage({
+        command: 'updateTxt',
+        payload: { textFormat: { color: settings.secondScrTxtColor } },
+      });
+    }
+  }
   podiums: Map<number, Podium> = new Map();
   curentGameState: GameState = GameState.Idle;
   podiumInSpotlightIndex = new BehaviorSubject<number>(null);
@@ -53,11 +94,45 @@ export class GameManagerService {
   buttonPlacing: number[] = [];
   brightnessBtn = 255;
   brightnessFce = 255;
-  constructor(private serial: SerialService, private router: Router) {
+
+  constructor(
+    private serial: SerialService,
+    private router: Router,
+    private soundFX: SoundFXService,
+    private indexedDb: IndexedDbService
+  ) {
     this.init();
     this.channel = new BroadcastChannel('sync_channel_points-' + pairKey);
+    this.channelRec = new BroadcastChannel(
+      'sync_channel_points-send-' + pairKey
+    );
+    this.channelRec.onmessage = (msg) => {
+      console.log(msg?.data);
+      const { command, podium } = msg?.data as {
+        command: PointsSystemSendCommandsType;
+        podium: Podium;
+      };
+      if (command == null) return;
+      switch (command) {
+        case 'summary':
+          this.podiums.forEach((p, key) => {
+            this.channel.postMessage({
+              command: 'setPodium',
+              payload: { key, podium: p },
+            } as PointsSystemReceiveCommands);
+          });
+          this.channel.postMessage({
+            command: 'update',
+          } as PointsSystemReceiveCommands);
+          break;
+      }
+    };
   }
   private async init() {
+    (async () => {
+      this._settings = JSON.parse(await this.indexedDb.getItem('settings'));
+      console.log(this._settings);
+    })();
     await firstValueFrom(
       this.serial.connectionStatus.pipe(filter((s) => s == 'connected'))
     );
@@ -75,6 +150,8 @@ export class GameManagerService {
   sendSummary() {
     this.podiums.clear();
     this.buttonPlacing = [];
+    this.podiumInSpotlight.next(null);
+    this.podiumInSpotlightIndex.next(null);
     this.serial.write(SendCommands.Summary);
   }
   swapPodium(podiumA: number, podiumB: number) {
@@ -132,14 +209,28 @@ export class GameManagerService {
   correctAns() {
     this.setToAllPodiums({ ledState: LEDState.CorrectAnswer });
     this.serial.write(SendCommands.CorrectAnswer);
+    this.soundFX.playAudio('correct');
   }
   suspenseAns() {
     this.setToAllPodiums({ ledState: LEDState.SuspenseAnswer });
     this.serial.write(SendCommands.SuspenseGame);
+    this.soundFX.playAudio('suspense');
+  }
+  wrongAns() {
+    this.setToAllPodiums({ ledState: LEDState.WrongAnswer });
+    this.serial.write(SendCommands.WrongAnswer);
+
+    this.soundFX.playAudio('wrong');
   }
   updatePodiums(key: number, value: Podium) {
     this.podiums.set(key, value);
-    this.channel.postMessage({ key, podium: value });
+    this.channel.postMessage({
+      command: 'setPodium',
+      payload: { key, podium: value },
+    } as PointsSystemReceiveCommands);
+    this.channel.postMessage({
+      command: 'update',
+    } as PointsSystemReceiveCommands);
   }
   clearPodiumPoints() {
     //this.setToAllPodiums({ scoring: { points: 0, streak: 0 } });
@@ -195,10 +286,7 @@ export class GameManagerService {
       [brightnessFce, brightnessBtn].join(',')
     );
   }
-  wrongAns() {
-    this.setToAllPodiums({ ledState: LEDState.WrongAnswer });
-    this.serial.write(SendCommands.WrongAnswer);
-  }
+
   private setToAllPodiums(
     podium: Partial<Podium>,
     options: { include?: number[]; exclude?: number[] } = {}
@@ -292,25 +380,33 @@ export class GameManagerService {
     const placing = +cmd[1];
     this.buttonPlacing[index] = placing;
     if (placing != 0) return;
+    this.soundFX.playAudio('answer');
     this.podiumInSpotlightIndex.next(index);
     this.setToAllPodiums({ ledState: LEDState.OFF }, { exclude: [index] });
   }
-  podiumAdded(payload: string) {
+  async podiumAdded(payload: string) {
     const cmd = this.splitPayload(payload, 3);
     const index = +cmd[0];
     console.log(`processing podium ${index}`);
     const status = dnrSeverity[+cmd[1]];
     const macAddr = cmd[2];
-    const localStrPod = window.localStorage.getItem(macAddr);
+    const localStrPod = await this.indexedDb.getItem(macAddr);
     const podium = JSON.parse(localStrPod);
     this.setPodium(index, { ...podium, dnr: status, macAddr });
   }
+  onPodiumUpdate(podium: Podium, index: number, macAddr: string = null) {
+    this.savePodiumState(podium, macAddr);
+    this.channel.postMessage({
+      command: 'setPodium',
+      payload: { key: index, podium },
+    } as PointsSystemReceiveCommands);
+    this.channel.postMessage({
+      command: 'update',
+    } as PointsSystemReceiveCommands);
+  }
   savePodiumState(podium: Podium, macAddr: string = null) {
     if (macAddr) podium.macAddr = macAddr;
-    window.localStorage.setItem(
-      macAddr ?? podium.macAddr,
-      JSON.stringify(podium)
-    );
+    this.indexedDb.setItem(macAddr ?? podium.macAddr, JSON.stringify(podium));
   }
   dnrState() {}
 }

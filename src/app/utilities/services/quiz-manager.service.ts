@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { IndexedDbService } from './indexed-db.service';
 export class QuizQuestion {
   constructor(
     public id: string,
@@ -18,7 +19,7 @@ export class QuizQuestion {
 export class QuizManagerService {
   questionIndex: Set<string>;
   questions: QuizQuestion[];
-  constructor() {
+  constructor(private indexedDb: IndexedDbService) {
     try {
       this.loadQuestionIndex();
       this.loadQuestions(this.questionIndex);
@@ -26,32 +27,34 @@ export class QuizManagerService {
       console.error(err);
     }
   }
-  loadQuestionIndex() {
+  async loadQuestionIndex() {
     this.questionIndex = new Set(
-      window.localStorage.getItem('index').split(',')
+      (await this.indexedDb.getItem('index')).split(',')
     );
   }
   removeQuestion(id: string) {
     this.questionIndex.delete(id);
-    window.localStorage.removeItem(id);
+    this.indexedDb.removeItem(id);
     this.saveQuestionIndex();
   }
   saveQuestionIndex() {
-    window.localStorage.setItem('index', [...this.questionIndex].join(','));
+    this.indexedDb.setItem('index', [...this.questionIndex].join(','));
   }
   loadQuestions(questionIndex: Set<string>) {
     if (!questionIndex) {
       this.questions = null;
       throw new Error('No index supplied');
     }
-    this.questions = [...questionIndex].map((q) =>
-      QuizQuestion.parseJson(JSON.parse(window.localStorage.getItem(q)))
-    );
+    Promise.all([...questionIndex].map(async (q) =>
+      QuizQuestion.parseJson(JSON.parse(await this.indexedDb.getItem(q)))
+    )).then(resolvedQuestions => {
+      this.questions = resolvedQuestions;
+    });
   }
   saveQuestion(question: QuizQuestion) {
     if (question == null || question.id == null)
       throw new Error('invalid question saved');
-    window.localStorage.setItem(question.id, JSON.stringify(question));
+    this.indexedDb.setItem(question.id, JSON.stringify(question));
     this.questionIndex ||= new Set();
     this.questionIndex.add(question.id);
     this.saveQuestionIndex();

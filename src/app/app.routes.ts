@@ -5,6 +5,7 @@ import { MainScreenComponent } from './pages/main-screen/main-screen.component';
 import { SerialConnectionGuard } from './utilities/guards/SerialConnection.guard';
 import { NotFoundComponent } from './pages/not-found/not-found.component';
 import { QuizEditorComponent } from './pages/quiz-editor/quiz-editor.component';
+import { SettingsComponent } from './settings/settings.component';
 
 export const routes: CustomRoutes = [
   { path: '', pathMatch: 'full', component: SetupComponent },
@@ -12,6 +13,11 @@ export const routes: CustomRoutes = [
     path: 'main',
     component: MainScreenComponent,
     canActivate: [SerialConnectionGuard],
+    data: {
+      navItem: {
+        name: 'Control Center'
+      },
+    },
   },
   {
     path: 'quiz_editor',
@@ -19,7 +25,25 @@ export const routes: CustomRoutes = [
   },
   {
     path: 'sec_scr',
-    component: SecondScreenComponent,data:{navItem:{name:'Points',routeOpenNewWindow:true,icon:'fa-solid fa-arrow-up-right-from-square'}}
+    component: SecondScreenComponent,
+    data: {
+      navItem: {
+        name: 'Points',
+        routeOpenNewWindow: true,
+        icon: 'fa-solid fa-arrow-up-right-from-square',
+      },
+    },
+  },
+  {
+    path: 'settings',
+    component: SettingsComponent,
+    canActivate: [SerialConnectionGuard],
+    data: {
+      navItem: {
+        name: 'Settings',
+        icon: 'fa-solid fa-gear',
+      },
+    },
   },
   { path: '404', component: NotFoundComponent, title: '404!' },
   { path: '**', redirectTo: '404' },
@@ -39,7 +63,7 @@ export interface NavItem {
   name?: string;
   title?: string;
   route?: string;
-  routeOpenNewWindow?:boolean;
+  routeOpenNewWindow?: boolean;
   routeActiveExact?: boolean;
   icon?: string;
   children?: NavItem[];

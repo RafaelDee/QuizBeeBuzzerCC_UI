@@ -3,6 +3,7 @@ import {
   Component,
   EventEmitter,
   Input,
+  OnInit,
   Output,
 } from '@angular/core';
 import {
@@ -15,6 +16,9 @@ import { bsColor } from '../../bootstrap_plus/ts/bootstrap';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CdkDragHandle } from '@angular/cdk/drag-drop';
+import { AdvancedImgDirective } from '../../utilities/directives/advanced-img.directive';
+import { FileManagerModalComponent } from '../../utilities/modal/modal-component/file-manager/file-managerModal.component';
+import { ModalService } from '../../utilities/services/modal.service';
 export const ordinalIndicators: { [num: number]: string } = {
   1: 'st',
   2: 'nd',
@@ -23,7 +27,7 @@ export const ordinalIndicators: { [num: number]: string } = {
 };
 const standByColorUI: `bg-${bsColor}` = 'bg-warning';
 const ledStateToUI: Partial<{
-  [state in LEDState]: `#${string}` | `bg-${bsColor}`|string;
+  [state in LEDState]: `#${string}` | `bg-${bsColor}` | string;
 }> = {
   [LEDState.OFF]: 'bg-secondary',
   [LEDState.SpotLight]: 'bg-warning',
@@ -34,11 +38,11 @@ const ledStateToUI: Partial<{
 };
 @Component({
   selector: 'app-podium-item',
-  imports: [CommonModule, FormsModule, CdkDragHandle],
+  imports: [CommonModule, FormsModule, CdkDragHandle, AdvancedImgDirective],
   templateUrl: './podium-item.component.html',
   styleUrls: ['./podium-item.component.scss'],
 })
-export class PodiumItemComponent {
+export class PodiumItemComponent implements OnInit {
   ordinalIndicators = ordinalIndicators;
   @Input() debug: boolean = false;
   @Input() editPoints: boolean = false;
@@ -57,6 +61,12 @@ export class PodiumItemComponent {
   get podiumPlacementBase1() {
     return this.podiumPlacement + 1;
   }
+  constructor(private modal: ModalService) {}
+  ngOnInit(): void {
+    /* const image = localStorage.getItem(this.podium.macAddr + '-img');
+    console.warn(image);
+    this.podium.photo = image; */
+  }
   @Output() onSpotlight = new EventEmitter<void>();
   @Output() onPodiumChange = new EventEmitter<Podium>();
   @Output() onPointsChange = new EventEmitter<number>();
@@ -68,6 +78,31 @@ export class PodiumItemComponent {
       ledStateToUI[this.podium?.ledState ?? LEDState.OFF] ?? 'bg-secondary';
     return { isClass: !color.charAt(0).match('#'), color };
   }
+  uploadImage() {
+    const modalRef = this.modal.open(FileManagerModalComponent, {
+      backdrop: 'static',
+    });
+    const compInstance = modalRef.componentInstance;
+    compInstance.accept = 'image/*';
+    compInstance.multiple = false;
+    compInstance.onFileDrop.subscribe((f) => {
+      const file = f[0];
+      if (file == null) return;
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.addEventListener(
+        'load',
+        () => {
+          const base64String = reader.result as string;
+          // convert image file to base64 string and save to localStorage
+          this.podium.photo = base64String;
+          this.podiumChanged();
+        },
+        false
+      );
+      modalRef.close();
+    });
+  }
   pointsChange(event: Event) {
     const value = event.target['value'] ?? 0;
     this.onPointsChange.emit(+value);
@@ -78,7 +113,7 @@ export class PodiumItemComponent {
       title: this.podium?.dnr ?? 'disconnected',
     };
   }
-  onTitleChange() {
+  podiumChanged() {
     this.onPodiumChange.emit(this.podium);
   }
 }
