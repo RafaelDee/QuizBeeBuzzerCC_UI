@@ -1,4 +1,9 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnDestroy,
+  OnInit,
+} from '@angular/core';
 import { NavBarComponent } from '../templates/nav-bar/nav-bar.component';
 import {
   SoundFX,
@@ -11,10 +16,19 @@ import { SecondScreenComponent } from '../pages/second-screen/second-screen.comp
 import { ModalService } from '../utilities/services/modal.service';
 import { FileManagerModalComponent } from '../utilities/modal/modal-component/file-manager/file-managerModal.component';
 import { GameManagerService } from '../utilities/services/game-manager.service';
+import { EmptyContentComponent } from '../templates/async/empty/empty/empty-content.component';
+import { AdvancedImgDirective } from '../utilities/directives/advanced-img.directive';
+import { SettingsConfigService } from '../utilities/services/settings-config.service';
 
 @Component({
   selector: 'app-settings',
-  imports: [NavBarComponent, CommonModule, FormsModule, SecondScreenComponent],
+  imports: [
+    NavBarComponent,
+    CommonModule,
+    FormsModule,
+    SecondScreenComponent,
+    EmptyContentComponent,AdvancedImgDirective
+  ],
   templateUrl: './settings.component.html',
   styles: `
     :host {
@@ -22,13 +36,21 @@ import { GameManagerService } from '../utilities/services/game-manager.service';
     }
   `,
 })
-export class SettingsComponent {
+export class SettingsComponent implements OnDestroy, OnInit {
   constructor(
     public soundFx: SoundFXService,
     private modal: ModalService,
-    public gameManager: GameManagerService
-  ) {}
-  uploadImage() {
+    public gameManager: GameManagerService,public settingsServ:SettingsConfigService
+  ) {
+    this.gameManager.editorMode(true);
+  }
+  ngOnInit(): void {
+    this.gameManager.editorMode(true);
+  }
+  ngOnDestroy(): void {
+    //this.gameManager.editorMode(false);
+  }
+  uploadImage(id:string) {
     const modalRef = this.modal.open(FileManagerModalComponent, {
       backdrop: 'static',
     });
@@ -46,7 +68,7 @@ export class SettingsComponent {
           const base64String = reader.result as string;
           // convert image file to base64 string and save to localStorage
           //this.podium.photo = base64String;
-          this.gameManager.setSettings({ secondScrBkg: base64String });
+          this.settingsServ.setSettings({ [id]: base64String });
         },
         false
       );

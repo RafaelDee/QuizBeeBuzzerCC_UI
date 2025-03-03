@@ -45,6 +45,7 @@ const ledStateToUI: Partial<{
 export class PodiumItemComponent implements OnInit {
   ordinalIndicators = ordinalIndicators;
   @Input() debug: boolean = false;
+  @Input() disableBtnSafety: boolean = true;
   @Input() editPoints: boolean = false;
   @Input() disableSpotlightBtn: boolean = false;
   @Input() allowNegativePoints: boolean = false;
@@ -69,6 +70,7 @@ export class PodiumItemComponent implements OnInit {
   }
   @Output() onSpotlight = new EventEmitter<void>();
   @Output() onPodiumChange = new EventEmitter<Podium>();
+  @Output() onPodiumRemove = new EventEmitter<void>();
   @Output() onPointsChange = new EventEmitter<number>();
   get readableIndex() {
     return this.index + 1;

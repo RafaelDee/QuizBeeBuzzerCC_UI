@@ -19,10 +19,10 @@
           </h3>
         </div>
         <div class="d-flex align-items-center">
-          <div class="text-center me-3">
+          <!-- <div class="text-center me-3">
             <label>Online</label>
             <h3 class="mb-0" style="margin-top: -5px">N/A</h3>
-          </div>
+          </div> -->
           <button class="btn btn-danger" (click)="disconnect()">
             Disconnect
           </button>
@@ -67,6 +67,7 @@
           [podium]="item.value"
           [index]="i"
           [allowNegativePoints]="pointsConfig.allowNegatives"
+          [disableBtnSafety]="disableSafteyReveal"
           (onPodiumChange)="onPodiumChange($event, i)"
           (onSpotlight)="
             gameManager.spotLightPodium(item.key); alertDimmedPodium()
@@ -77,26 +78,45 @@
     </div>
   </div>
   <div class="d-flex flex-column" style="min-height: 100%; flex-grow: 1">
-    <div class="d-flex justify-content-center align-content-bottom">
-      <div
-        [ngStyle]="{
-          visibility:
-            gameManager.curentGameState !== GameState.QuizReady
-              ? 'hidden'
-              : 'visible'
-        }"
-        class="bg-danger rounded-top-3 px-5 py-1"
-      >
-        <h3
-          class="mb-0"
-          style="
-            letter-spacing: 0.2rem;
-            font-family: monospace;
-            font-weight: bolder;
-          "
+    <div class="d-flex justify-content-between">
+      <button style="visibility: hidden" class="btn btn-danger">
+        <i class="fa-solid fa-arrows-rotate"></i> Re-Sync Points
+      </button>
+      <button style="visibility: hidden" class="btn btn-danger me-2">
+        <i class="fa-solid fa-arrows-rotate"></i> Re-Sync Points
+      </button>
+      <div class="d-flex justify-content-center align-content-bottom">
+        <div
+          [ngStyle]="{
+            visibility:
+              gameManager.curentGameState !== GameState.QuizReady
+                ? 'hidden'
+                : 'visible'
+          }"
+          class="bg-danger rounded-top-3 px-5 py-1"
         >
-          ARMED
-        </h3>
+          <h3
+            class="mb-0"
+            style="
+              letter-spacing: 0.2rem;
+              font-family: monospace;
+              font-weight: bolder;
+            "
+          >
+            ARMED
+          </h3>
+        </div>
+      </div>
+      <div>
+        <button (click)="gameManager.refresh()" class="btn btn-sm btn-danger me-2">
+          <i class="fa-solid fa-arrows-rotate"></i> Pts. Page
+        </button>
+        <button
+          class="btn btn-info btn-sm me-1"
+          (click)="gameManager.forceSync()"
+        >
+          <i class="fa-solid fa-arrows-rotate"></i> Re-Sync Points
+        </button>
       </div>
     </div>
     <div class="control-center bg-body" style="min-height: 100%; flex-grow: 1">
@@ -145,15 +165,28 @@
                   ></i
                   >{{ edit ? " Done" : " Edit" }}
                 </button>
+                <!-- <button
+                  class="btn btn-primary"
+                  [disabled]="sfx.currentPlayingAudio == null" (click)="sfx.stopAudio()"
+                >
+                  Pause Audio <i class="fa-solid fa-pause"></i>
+                </button> -->
+                <button
+                  class="btn btn-primary"
+                  [disabled]="sfx.currentPlayingAudio == null"
+                  (click)="sfx.stopAudio()"
+                >
+                  Stop Audio <i class="fa-solid fa-stop"></i>
+                </button>
+              </div>
+              <div class="d-flex justify-content-between">
                 <button
                   class="btn"
                   (click)="disableSafteyReveal = !disableSafteyReveal"
                   [ngClass]="disableSafteyReveal ? 'btn-info' : 'btn-danger'"
                 >
-                  {{ disableSafteyReveal ? "Enable" : "Disable" }} Button Saftey
+                  {{ disableSafteyReveal ? "Enable" : "Disable" }} Btn Saftey
                 </button>
-              </div>
-              <div class="d-flex justify-content-between">
                 <button
                   [ngStyle]="{
                     visibility: debugMode ? 'visible' : 'hidden'
@@ -161,16 +194,22 @@
                   class="btn btn-primary"
                   (click)="gameManager.sendSummary(); alertDimmedPodium()"
                 >
-                  Summary
+                  Sum
                 </button>
                 <button
                   class="btn btn-secondary"
                   (click)="debugMode = !debugMode"
                 >
-                  {{ debugMode ? "Disable" : "Enable" }} Debugger
+                  Debugger {{ debugMode ? "On" : "Off" }}
                 </button>
               </div>
             </div>
+            <div><button *ngIf="debugMode"
+              class="btn btn-secondary"
+              (click)="gameManager.clearPodium()"
+            >
+              Clear Mem
+            </button></div>
           </div>
           <hr class="d-block d-md-none" />
           <div class="col-md-4">
@@ -230,8 +269,9 @@
             </div>
           </div>
           <hr class="d-block d-md-none" />
-          @let btnPointsDisabled = gameManager.curentGameState ==
-          GameState.QuizReady || pointsConfig.selectedPodiumIndex == null ||
+          @let pointsConfig = gameManager.pointsConfig; @let btnPointsDisabled =
+          gameManager.curentGameState == GameState.QuizReady ||
+          pointsConfig.selectedPodiumIndex == null ||
           pointsConfig.selectedPodiumIndex == 'null';
           <div class="col-md-4">
             <div class="row gx-4 gy-2">
@@ -242,9 +282,7 @@
                   [ngClass]="
                     pointsConfig.allowNegatives ? 'btn-success' : 'btn-danger'
                   "
-                  (click)="
-                    pointsConfig.allowNegatives = !pointsConfig.allowNegatives
-                  "
+                  (click)="gameManager.toggleNegativePts()"
                 >
                   <i
                     class="fa-solid"
@@ -287,7 +325,7 @@
                   [ngClass]="
                     pointsConfig.autoSelect ? 'btn-success' : 'btn-danger'
                   "
-                  (click)="toggleAutoSelect()"
+                  (click)="gameManager.toggleAutoSelect()"
                 >
                   <i
                     class="fa-solid"
@@ -298,31 +336,28 @@
                   Auto
                 </button>
               </div>
-              <div class="col-6">
+              <div class="row g-2">
                 <div
-                  *ngFor="
-                    let points of pointsConfig.pointsPreset | slice : 0 : 3
+                  *ngIf="
+                    (gameManager.pointsConfig.pointsPreset.length ?? 0) <= 0
                   "
                 >
-                  <button
-                    [disabled]="btnPointsDisabled"
-                    class="btn btn-secondary w-100 mb-2"
-                    (click)="pointsConfig.pointsInput = points"
-                  >
-                    {{ points }}
-                  </button>
+                  <empty></empty>
+                  <p class="text-center">
+                    go to settings > points to add a preset
+                  </p>
                 </div>
-              </div>
-              <div class="col-6">
+
                 <div
+                  class="col-6"
                   *ngFor="
-                    let points of pointsConfig.pointsPreset | slice : 3 : 6
+                    let points of pointsConfig.pointsPreset | slice : 0 : 6
                   "
                 >
                   <button
                     [disabled]="btnPointsDisabled"
+                    class="btn btn-secondary w-100"
                     (click)="pointsConfig.pointsInput = points"
-                    class="btn btn-secondary w-100 mb-2"
                   >
                     {{ points }}
                   </button>
@@ -348,6 +383,7 @@
                   class="form-control"
                   aria-label="Text input with segmented dropdown button"
                   [ngModel]="pointsConfig.pointsInput"
+                  (keydown.enter)="addPoints(pointsConfig.pointsInput)"
                   (ngModelChange)="pointsConfig.pointsInput = +$event"
                   (keydown)="
                     ['e', 'E', '+', '-'].includes($event['key'])

@@ -27,23 +27,31 @@ import {
 import { AnimateDirective } from '../../utilities/directives/Animate.directive';
 import { Podium } from '../../values/podium.values';
 import { BehaviorSubject, debounceTime, fromEvent, Subscription } from 'rxjs';
+import { ScrollingNumbersDirective } from '../../utilities/directives/scrolling-numbers.directive';
+import { ScrollingNumberComponent } from '../../templates/scrolling-number/scrolling-number.component';
+import { asyncDelay } from '../../utilities/common-utils';
+
+declare global {
+  interface Window {
+    Electron?: {
+      ipcRenderer: {
+        send(channel: string, ...args: any[]): void;
+      };
+    };
+  }
+}
 @Component({
   selector: 'app-second-screen',
-  imports: [CommonModule, OrderModule, AdvancedImgDirective, AnimateDirective],
+  imports: [
+    CommonModule,
+    OrderModule,
+    AdvancedImgDirective,
+    AnimateDirective,
+    ScrollingNumbersDirective,
+    ScrollingNumberComponent,
+  ],
   templateUrl: './second-screen.component.html',
-  styles: `
-    :host {
-      display: block;
-      height:100vh;
-    }
-  .row-cols-5 > .col-sp {
-    flex: 0 0 auto;
-    width: 20%;
-  }
-  .text-shadow{
-    text-shadow: 3px 1px 10px rgba(0,0,0,0.77);
-  }
-  `,
+  styleUrls: ['./second-screen.component.scss'],
   animations: [
     trigger('fadeIn', [
       transition(':enter', [
@@ -57,7 +65,7 @@ export class SecondScreenComponent implements OnInit {
   @Input() previewMode: boolean = false;
   @ViewChildren(AnimateDirective) items: QueryList<AnimateDirective>;
   podiums: { key: number; value: Podium }[] = [];
-  podiumsCache: { key: number; value: Podium }[] = [];
+  //podiumsCache: { key: number; value: Podium }[] = [];
   private resizeSubscription!: Subscription;
   constructor(public score: ScoringService, private cdr: ChangeDetectorRef) {
     this.resizeSubscription = fromEvent(window, 'resize')
@@ -66,14 +74,22 @@ export class SecondScreenComponent implements OnInit {
         this.items.forEach((x) => x.animateGo());
         this.resizing = false;
       });
+    this.score.onRefresh.asObservable().subscribe(() => this.reload());
+  }
+  closeWindow() {
+    window.close();
+  }
+  reload() {
+    if(this.previewMode)return;
+    location.reload();
   }
   async ngOnInit(): Promise<void> {
-    await this.score.init()
+    this.score.init();
     if (!this.previewMode)
       document.documentElement.removeAttribute('data-bs-theme');
     this.score.podiums.subscribe((x) => {
       if (!x) return;
-      this.podiumsCache = Array.from(x.entries()) // Convert Map to an array
+      const test = Array.from(x.entries()) // Convert Map to an array
         .map(([key, value]) => {
           if (value) {
             const podI = this.podiums.findIndex((x) => x.key == key);
@@ -87,7 +103,7 @@ export class SecondScreenComponent implements OnInit {
           }
           return { key: key, value: value as Podium };
         }); // Convert number to string // Sort in descending order
-      this.click();
+      this.click(test);
     });
   }
   resizing = false;
@@ -101,26 +117,38 @@ export class SecondScreenComponent implements OnInit {
     );
     this.items.forEach((x) => x.animateGo());
   } */
-  click() {
+  async click(
+    asd: {
+      key: number;
+      value: Podium;
+    }[]
+  ) {
     if ((this.podiums?.length ?? 0) == 0) {
-      this.podiums = this.podiumsCache;
+      this.podiums = asd;
       this.cdr.detectChanges();
     }
+    console.log(this.podiums);
     this.podiums = this.podiums
       .map((x) => {
-        console.log(this.score._podiums.get(x.key)?.scoring?.points);
         return {
           item: x,
-          score: this.score._podiums.get(x.key)?.scoring?.points ?? 0,
+          score: this.score.podiums.value.get(x.key)?.scoring?.points ?? 0,
         };
       })
       .sort((a, b) => (b.score == a.score ? 0 : b.score - a.score))
       .map((x) => x.item);
 
-    console.log(this.podiums);
     this.cdr.detectChanges();
+    await asyncDelay(100);
     //this.podiumsSub.next(this.podiums);
     this.items.forEach((x) => x.animateGo());
+  }
+  fullscreen() {
+    if (window.Electron) {
+      window.Electron.ipcRenderer.send('maximize');
+    } else {
+      document.documentElement.requestFullscreen();
+    }
   }
   identify(index, item: Podium) {
     return item.macAddr;

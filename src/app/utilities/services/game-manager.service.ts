@@ -8,11 +8,12 @@ import {
 import { openDB } from 'idb';
 import { BehaviorSubject, filter, firstValueFrom, min } from 'rxjs';
 import { dnrSeverity, LEDState, Podium } from '../../values/podium.values';
-import { Router } from '@angular/router';
+import { NavigationEnd, NavigationStart, Route, Router } from '@angular/router';
 import { constrain } from '../common-utils';
 import {
   PointsSystemReceiveCommands,
   PointsSystemSendCommandsType,
+  ScoringService,
 } from './scoring.service';
 import { SoundEffects, SoundFXService } from './soundFX.service';
 import { IndexedDbService } from './indexed-db.service';
@@ -42,51 +43,41 @@ export const gameStateTitles: { [key in GameState]: string } = {
   [GameState.OffAllPodium]: 'Off Podiums',
   [GameState.Spotlight]: 'Spotlight',
 };
+export interface PointsConfig {
+  autoSelect: boolean;
+  selectedPodiumIndex: any;
+  pointsPreset: number[];
+  pointsInput: number;
+  allowNegatives: boolean;
+}
 export interface Command<T extends SendCommands | ReceiveCommands> {
   command: T;
   payload: string;
 }
-export interface AudioSettings {
-  master: number;
-}
 
-export type SoundEffectsSettings = {
-  [key in SoundEffects]: number;
-};
-export interface SettingsConfig {
-  secondScrBkg: string;
-  secondScrTxtColor: string;
-  audio: Partial<AudioSettings & SoundEffectsSettings>;
-}
 @Injectable({
   providedIn: 'root',
 })
 export class GameManagerService {
   channel: BroadcastChannel;
   channelRec: BroadcastChannel;
-  private _settings: SettingsConfig;
-  public get settings() {
-    return this._settings;
+  pointsConfig: PointsConfig = {
+    autoSelect: true,
+    selectedPodiumIndex: null,
+    pointsPreset: [50, 100, 150, 200, 250, 300],
+    pointsInput: 0,
+    allowNegatives: true,
+  };
+  toggleNegativePts() {
+    this.pointsConfig.allowNegatives = !this.pointsConfig.allowNegatives;
+    this.savePointsConfig();
   }
-  setSettings(settings: Partial<SettingsConfig>) {
-    this._settings = { ...this._settings, ...settings };
-    this.indexedDb.setItem('settings', JSON.stringify(this._settings));
-    this.sendSettingsConfig(settings);
+  toggleAutoSelect() {
+    this.pointsConfig.autoSelect = !this.pointsConfig.autoSelect;
+    this.pointsConfig.selectedPodiumIndex = this.podiumInSpotlightIndex.value;
+    this.savePointsConfig();
   }
-  sendSettingsConfig(settings: Partial<SettingsConfig>) {
-    if (settings?.secondScrBkg != null) {
-      this.channel.postMessage({
-        command: 'updateBkg',
-        payload: { secondScrBkg: settings.secondScrBkg },
-      });
-    }
-    if (settings?.secondScrTxtColor != null) {
-      this.channel.postMessage({
-        command: 'updateTxt',
-        payload: { textFormat: { color: settings.secondScrTxtColor } },
-      });
-    }
-  }
+
   podiums: Map<number, Podium> = new Map();
   curentGameState: GameState = GameState.Idle;
   podiumInSpotlightIndex = new BehaviorSubject<number>(null);
@@ -94,18 +85,58 @@ export class GameManagerService {
   buttonPlacing: number[] = [];
   brightnessBtn = 255;
   brightnessFce = 255;
-
+  addPoints(value: number) {
+    const points = value;
+    const index =
+      Number.parseInt(this.pointsConfig.selectedPodiumIndex) ?? null;
+    if (points == null || points == 0 || isNaN(points)) return;
+    if (index == null || index < 0 || isNaN(index)) return;
+    this.setPodiumPoints(
+      +index,
+      points,
+      this.pointsConfig.allowNegatives,
+      true
+    );
+    this.pointsConfig.pointsInput = null;
+  }
+  private isEdit = false;
+  editorMode(value: boolean) {
+    this.isEdit = value;
+    this.channel.postMessage({
+      command: 'editor',
+      payload: this.isEdit,
+    });
+  }
+  pointsChange(index: number, value: number) {
+    this.setPodiumPoints(
+      +index,
+      value,
+      this.pointsConfig.allowNegatives,
+      false
+    );
+  }
+  summarizing = false;
   constructor(
     private serial: SerialService,
     private router: Router,
     private soundFX: SoundFXService,
-    private indexedDb: IndexedDbService
+    private indexedDb: IndexedDbService,
+    private scoringService: ScoringService
   ) {
+    /* router.events.subscribe((val) => {
+      if (val instanceof NavigationEnd) {
+        this.editorMode(false);
+      }
+    }); */
     this.init();
     this.channel = new BroadcastChannel('sync_channel_points-' + pairKey);
     this.channelRec = new BroadcastChannel(
       'sync_channel_points-send-' + pairKey
     );
+    this.podiumInSpotlightIndex.subscribe((index) => {
+      if (this.pointsConfig.autoSelect)
+        this.pointsConfig.selectedPodiumIndex = index ?? null;
+    });
     this.channelRec.onmessage = (msg) => {
       console.log(msg?.data);
       const { command, podium } = msg?.data as {
@@ -115,6 +146,8 @@ export class GameManagerService {
       if (command == null) return;
       switch (command) {
         case 'summary':
+          if (this.summarizing) return;
+          this.summarizing = true;
           this.podiums.forEach((p, key) => {
             this.channel.postMessage({
               command: 'setPodium',
@@ -124,15 +157,33 @@ export class GameManagerService {
           this.channel.postMessage({
             command: 'update',
           } as PointsSystemReceiveCommands);
+          this.channel.postMessage({
+            command: 'editor',
+            payload: this.isEdit,
+          });
+          this.summarizing = false;
           break;
       }
     };
   }
+  refresh() {
+    this.channel.postMessage({
+      command: 'refresh',
+    } as PointsSystemReceiveCommands);
+  }
+  forceSync() {
+    this.podiums.forEach((p, key) => {
+      this.channel.postMessage({
+        command: 'setPodium',
+        payload: { key, podium: p },
+      } as PointsSystemReceiveCommands);
+    });
+    this.channel.postMessage({
+      command: 'update',
+    } as PointsSystemReceiveCommands);
+  }
   private async init() {
-    (async () => {
-      this._settings = JSON.parse(await this.indexedDb.getItem('settings'));
-      console.log(this._settings);
-    })();
+    this.loadPointsConfig();
     await firstValueFrom(
       this.serial.connectionStatus.pipe(filter((s) => s == 'connected'))
     );
@@ -140,22 +191,33 @@ export class GameManagerService {
       if (!s) return;
       this.processCommand(s);
     });
-    this.serial.connectionStatus.subscribe((c) => {
-      if (c == 'disconnected') {
-        this.router.navigate(['/']);
-      }
-    });
+
     this.sendSummary();
   }
+  summaryMode = false;
   sendSummary() {
+    this.summaryMode = true;
     this.podiums.clear();
     this.buttonPlacing = [];
     this.podiumInSpotlight.next(null);
     this.podiumInSpotlightIndex.next(null);
     this.serial.write(SendCommands.Summary);
   }
-  swapPodium(podiumA: number, podiumB: number) {
-    if (podiumA == podiumB) return;
+  swapPodium(currentIndex: number, targetIndex: number) {
+    if (currentIndex == targetIndex) return;
+    const shiftLeft = currentIndex < targetIndex;
+    const currentPodium = this.podiums.get(currentIndex);
+    if (!shiftLeft) {
+      for (let i = currentIndex; i > targetIndex; i--) {
+        this.updatePodiums(i, this.podiums.get(i - 1));
+      }
+    } else {
+      for (let i = currentIndex; i < targetIndex; i++) {
+        this.updatePodiums(i, this.podiums.get(i + 1));
+      }
+    }
+    this.updatePodiums(targetIndex, currentPodium);
+    /*
     const podiumAData = this.podiums.get(podiumA);
     const podiumBData = this.podiums.get(podiumB);
     const podAMac = podiumAData.macAddr;
@@ -167,8 +229,11 @@ export class GameManagerService {
       this.updatePodiums(podiumB, podiumAData);
     }
     this.savePodiumState(podiumAData, podAMac);
-    this.savePodiumState(podiumBData, podBMac);
-    this.serial.write(SendCommands.SwapPodium, [podiumA, podiumB].join(','));
+    this.savePodiumState(podiumBData, podBMac); */
+    this.serial.write(
+      SendCommands.SwapPodium,
+      [currentIndex, targetIndex].join(',')
+    );
   }
   /* swapPodium(podiumA: number, podiumB: number) {
     if (podiumA == podiumB) return;
@@ -199,12 +264,14 @@ export class GameManagerService {
     this.serial.write(SendCommands.ResetGameState);
     this.buttonPlacing = [];
     this.podiumInSpotlightIndex.next(null);
+    this.soundFX.stopAudio();
   }
   readyGame() {
     this.setToAllPodiums({ ledState: LEDState.StandBy });
     this.serial.write(SendCommands.ReadyGameState);
     this.buttonPlacing = [];
     this.podiumInSpotlightIndex.next(null);
+    this.soundFX.stopAudio();
   }
   correctAns() {
     this.setToAllPodiums({ ledState: LEDState.CorrectAnswer });
@@ -228,9 +295,10 @@ export class GameManagerService {
       command: 'setPodium',
       payload: { key, podium: value },
     } as PointsSystemReceiveCommands);
-    this.channel.postMessage({
-      command: 'update',
-    } as PointsSystemReceiveCommands);
+    if (!this.summaryMode)
+      this.channel.postMessage({
+        command: 'update',
+      } as PointsSystemReceiveCommands);
   }
   clearPodiumPoints() {
     //this.setToAllPodiums({ scoring: { points: 0, streak: 0 } });
@@ -249,6 +317,15 @@ export class GameManagerService {
       this.updatePodiums(index, podium);
     }
   }
+  addPoidumConfigPoints(value: number) {
+    if (value == null || isNaN(value)) return;
+    this.pointsConfig.pointsPreset.push(value);
+    this.savePointsConfig();
+  }
+  removePodiumConfigPoints(index: number) {
+    this.pointsConfig.pointsPreset.splice(index, 1);
+    this.savePointsConfig();
+  }
   setPodiumPoints(
     index: number,
     value: number,
@@ -263,6 +340,24 @@ export class GameManagerService {
     else scoring.points = value;
     if (!allowNegatives) scoring.points = Math.max(scoring.points, 0);
     this.setPodium(index, { scoring });
+  }
+  async loadPointsConfig() {
+    const json = await this.indexedDb.getItem('pointsConfig');
+    if (!json) return;
+    const { pointsPreset, ...other } = JSON.parse(json) as PointsConfig;
+    if (other) {
+      this.pointsConfig = { ...this.pointsConfig, ...other };
+    }
+    if (pointsPreset) {
+      this.pointsConfig.pointsPreset = pointsPreset;
+    }
+  }
+  savePointsConfig() {
+    const { allowNegatives, pointsPreset, autoSelect } = this.pointsConfig;
+    this.indexedDb.setItem(
+      'pointsConfig',
+      JSON.stringify({ allowNegatives, pointsPreset, autoSelect })
+    );
   }
   addStreak(index: number) {
     const scoring: {
@@ -318,7 +413,19 @@ export class GameManagerService {
     this.savePodiumState(pod);
     this.updatePodiums(index, pod);
   }
-
+  clearPodium() {
+    this.podiums.clear();
+    this.serial.write(SendCommands.ClearPodium);
+    this.podiums.forEach((p, key) => {
+      this.channel.postMessage({
+        command: 'setPodium',
+        payload: { key, podium: p },
+      } as PointsSystemReceiveCommands);
+    });
+    this.channel.postMessage({
+      command: 'update',
+    } as PointsSystemReceiveCommands);
+  }
   processCommand(command: Command<ReceiveCommands>) {
     switch (command.command) {
       case ReceiveCommands.Dnr:
@@ -337,6 +444,12 @@ export class GameManagerService {
         this.battStat(command.payload);
         return;
       case ReceiveCommands.GameState:
+        if (this.summaryMode) {
+          this.summaryMode = false;
+          this.channel.postMessage({
+            command: 'update',
+          } as PointsSystemReceiveCommands);
+        }
         this.setgameState(command.payload);
         return;
       case ReceiveCommands.PodiumBrightness:
@@ -352,10 +465,14 @@ export class GameManagerService {
     }
   }
   splitPayload(payload: string, count: number) {
+    if (!payload) {
+      throw new Error('Payload is empty or undefined');
+    }
     const cmd = payload.split(',');
+
     if (cmd.length != count) {
       throw new Error(
-        `Invalid command length of ${cmd.length}, requred:${count} command: ${cmd}`
+        `Invalid command length of ${cmd.length}, requred:${count} command: ${payload}`
       );
     }
     return cmd;

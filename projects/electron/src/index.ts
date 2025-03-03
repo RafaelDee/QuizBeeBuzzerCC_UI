@@ -1,11 +1,10 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
   app.quit();
 }
-
 let mainWindow: BrowserWindow | null;
 
 const createWindow = (): void => {
@@ -17,7 +16,7 @@ const createWindow = (): void => {
       preload: path.join(__dirname, 'preload.js'),
     },
   });
-
+  mainWindow.maximize();
   mainWindow.webContents.session.setDevicePermissionHandler((details) => {
     console.log(
       'ALLOWING DEVICE ' +
@@ -39,7 +38,31 @@ const createWindow = (): void => {
         'index.html'
       )}`
     : `http://localhost:4200`;
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http://localhost:')) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          height: 600,
+          width: 800,
+          frame: false,
+          // Add maximize flag
+          maximize: true
+        },
+      };
+    }
+    // Open external URLs in default browser
+    require('electron').shell.openExternal(url);
+    return { action: 'deny' };
+  });
+  ipcMain.on('maximize', (event, data) => {
+    if(mainWindow.isMaximized()){
+      mainWindow.unmaximize();
+    }else{
+      mainWindow.maximize();
+    }
 
+  });
   mainWindow.loadURL(startURL);
 };
 

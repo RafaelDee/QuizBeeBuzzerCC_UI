@@ -21,6 +21,7 @@
   --navbarH: 56px;
   --color-primary: #c1dafe;
 }
+
 //why??
 /* router-outlet + * {
   padding-bottom: 100px;
@@ -152,4 +153,35 @@ apx-chart .apexcharts-tooltip {
   border-color: var(--bs-border-color);
 }
 
+#number {
+  position: relative;
+  display: flex;
+  width: 0;
+  overflow: hidden;
+  height: 48px;
+  transition: width 1.8s ease;
+}
+
+#number > span {
+  display: flex;
+  text-align: center;
+  flex-direction: column;
+  opacity: 0;
+  flex-shrink: 2;
+  flex-basis: 48px;
+  width: 1px;
+  position: absolute;
+  right: 0;
+  line-height: 48px;
+  transition: all 2s ease;
+}
+
+.pod-item:not([style*="visibility: hidden"]) {
+  #number > span.visible {
+    position: static;
+    width: 30px;
+    opacity: 1;
+    flex-shrink: 1;
+  }
+}
 

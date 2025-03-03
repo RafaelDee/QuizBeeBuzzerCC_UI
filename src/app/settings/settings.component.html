@@ -1,16 +1,28 @@
 <nav-bar></nav-bar>
-<div class="container mt-4">
+<div class="container mt-4 pb-5">
   <h3>Settings</h3>
   <div class="mb-3">
     <div class="d-flex align-items-center w-100 mb-2">
-      <h4 class="mb-0 me-3 white-space-nowrap">Second Screen Bkg.</h4>
+      <h4 class="mb-0 me-3 white-space-nowrap">Second Screen</h4>
       <hr class="flex-grow-1" />
     </div>
     <div>
       <div style="height: 30%; max-height: 30%; position: relative">
-        <div class="position-absolute top-0 left-0" style="z-index: 10">
-          <button class="btn btn-primary ms-2 mt-2" (click)="uploadImage()">
+        <div
+          class="w-100 position-absolute top-0 left-0 d-flex justify-content-between"
+          style="z-index: 10"
+        >
+          <button
+            class="btn btn-primary ms-2 mt-2"
+            (click)="uploadImage('secondScrBkg')"
+          >
             <i class="fa-solid fa-arrow-up-from-bracket"></i>
+          </button>
+          <button
+            class="btn btn-danger me-2 mt-2"
+            (click)="settingsServ.removeSettingConfig('secondScrBkg')"
+          >
+            <i class="fa-solid fa-trash"></i>
           </button>
         </div>
         <app-second-screen
@@ -23,22 +35,107 @@
           "
         ></app-second-screen>
       </div>
-      <div>
-        <div class="mb-3">
+      <div class="row g-2">
+        <div class="col-4">
           <label for="exampleInputEmail1" class="form-label">Text Color</label>
           <input
             type="color"
             class="form-control"
-            [ngModel]="gameManager?.settings?.secondScrTxtColor"
+            [ngModel]="settingsServ?.settings?.secondScrTxtColor"
             (ngModelChange)="
-              gameManager.sendSettingsConfig({ secondScrTxtColor: $event })
+              settingsServ.sendSettingsConfig({ secondScrTxtColor: $event })
             "
             (change)="
-              gameManager.setSettings({
+              settingsServ.setSettings({
                 secondScrTxtColor: $event.target['value']
               })
             "
           />
+        </div>
+        <div class="col-4">
+          <label for="exampleInputEmail1" class="form-label"
+            >Image Border Color</label
+          >
+          <input
+            type="color"
+            class="form-control"
+            [ngModel]="settingsServ?.settings?.imgBorderColor"
+            (ngModelChange)="
+              settingsServ.sendSettingsConfig({ imgBorderColor: $event })
+            "
+            (change)="
+              settingsServ.setSettings({
+                imgBorderColor: $event.target['value']
+              })
+            "
+          />
+        </div>
+
+        <div class="col-4">
+          <label for="exampleInputEmail1" class="form-label"
+            >Image Background Color</label
+          >
+          <input
+            type="color"
+            class="form-control"
+            [ngModel]="settingsServ?.settings?.imgBkgColor"
+            (ngModelChange)="
+              settingsServ.sendSettingsConfig({ imgBkgColor: $event })
+            "
+            (change)="
+              settingsServ.setSettings({
+                imgBkgColor: $event.target['value']
+              })
+            "
+          />
+        </div>
+        <!-- <div class="col-4">
+          <label for="exampleInputEmail1" class="form-label"
+            >Preparing Text</label
+          >
+          <input
+            type="color"
+            class="form-control"
+            [ngModel]="gameManager?.settings?.imgBkgColor"
+            (ngModelChange)="
+              gameManager.sendSettingsConfig({ imgBkgColor: $event })
+            "
+            (change)="
+              gameManager.setSettings({
+                prepTxt: $event.target['value']
+              })
+            "
+          />
+        </div> -->
+        <div>
+          <label for="exampleInputEmail1" class="form-label"
+            >Preparing Image</label
+          >
+          <div
+            class="d-flex position-relative"
+            style="max-width: 100%; max-height: 40vh"
+          >
+            <img
+              class="rounded-2"
+              style="max-width: 100%; max-height: 40vh; object-fit: contain"
+              [defaultImage]="'image'"
+              [src]="settingsServ.settings.prepImg"
+            />
+            <div class="position-absolute top-0 left-0">
+              <button
+                class="btn btn-primary btn-sm"
+                (click)="uploadImage('prepImg')"
+              >
+                <i class="fa-solid fa-arrow-up-from-bracket"></i>
+              </button>
+              <button
+                class="btn btn-danger btn-sm"
+                (click)="settingsServ.removeSettingConfig('prepImg')"
+              >
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -69,6 +166,9 @@
               max="100"
               [ngModel]="soundFx.masterVolume * 100"
               (ngModelChange)="soundFx.masterVolume = $event / 100"
+              (change)="
+                settingsServ.setAudioSettings('master', soundFx.masterVolume)
+              "
             />
           </div>
         </div>
@@ -94,9 +194,70 @@
               max="100"
               [ngModel]="sfxVolume"
               (ngModelChange)="soundFx.setAudioVolume(sfx.key, $event / 100)"
+              (change)="settingsServ.setAudioSettings(sfx.key, sfx.value.volume)"
             />
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+  <div class="audio-group mb-4">
+    <div class="d-flex align-items-center w-100 mb-2">
+      <h4 class="mb-0 me-3 white-space-nowrap">Points</h4>
+      <hr class="flex-grow-1" />
+    </div>
+    <div class="row g-2">
+      <empty
+        *ngIf="(gameManager.pointsConfig.pointsPreset.length ?? 0) <= 0"
+      ></empty>
+      <div
+        class="col-6"
+        *ngFor="
+          let points of gameManager.pointsConfig.pointsPreset | slice : 0 : 6;
+          let i = index
+        "
+      >
+        <div class="btn-group w-100">
+          <button class="btn btn-secondary w-100">
+            {{ points }}
+          </button>
+          <button
+            href="#"
+            class="btn btn-danger"
+            (click)="gameManager.removePodiumConfigPoints(i)"
+          >
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      </div>
+      <div class="input-group">
+        <button
+          type="button"
+          class="btn btn-success"
+          [disabled]="+(pointsInput.value ?? 0) <= 0"
+          (click)="
+            gameManager.addPoidumConfigPoints(+pointsInput.value);
+            pointsInput.value = null
+          "
+        >
+          Add
+        </button>
+
+        <input
+          #pointsInput
+          type="number"
+          class="form-control"
+          aria-label="Text input with segmented dropdown button"
+          (keydown.enter)="
+            gameManager.addPoidumConfigPoints(+pointsInput.value);
+            pointsInput.value = null
+          "
+          (keydown)="
+            ['e', 'E', '+', '-'].includes($event['key'])
+              ? $event.preventDefault()
+              : null
+          "
+        />
       </div>
     </div>
   </div>

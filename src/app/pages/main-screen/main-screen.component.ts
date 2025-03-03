@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { RouterLink, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { BrowserSerial } from 'browser-serial';
 import { CommonModule } from '@angular/common';
 import {
@@ -22,6 +22,12 @@ import { SimpleModalComponent } from '../../utilities/modal/modal-component/simp
 import { ModalService } from '../../utilities/services/modal.service';
 import { FormsModule } from '@angular/forms';
 import { ToastService } from '../../utilities/services/toast/toast.service';
+import { drop } from '../../utilities/cdkHelper';
+import {
+  SoundEffects,
+  SoundFXService,
+} from '../../utilities/services/soundFX.service';
+import { EmptyContentComponent } from '../../templates/async/empty/empty/empty-content.component';
 
 @Component({
   selector: 'app-main-screen',
@@ -35,24 +41,13 @@ import { ToastService } from '../../utilities/services/toast/toast.service';
     CdkDragHandle,
     NavBarComponent,
     FormsModule,
+    EmptyContentComponent,
   ],
   templateUrl: './main-screen.component.html',
   styleUrls: ['./main-screen.component.scss'],
 })
 export class MainScreenComponent implements OnInit {
-  pointsConfig: {
-    autoSelect: boolean;
-    selectedPodiumIndex: any;
-    pointsPreset: number[];
-    pointsInput: number;
-    allowNegatives: boolean;
-  } = {
-    autoSelect: true,
-    selectedPodiumIndex: null,
-    pointsPreset: [50, 100, 150, 200, 250, 300],
-    pointsInput: 0,
-    allowNegatives: true,
-  };
+  static onetime = false;
   title = 'BuzzerControlCenter';
   batteryWarningTreshold = 75;
   brightnessAlertTreshold = 5;
@@ -65,8 +60,7 @@ export class MainScreenComponent implements OnInit {
   }
   public set edit(value) {
     this._edit = value;
-    if (!this.edit) {
-    }
+    this.gameManager.editorMode(value);
   }
   move = false;
   dnrStatus = dnrSeverity;
@@ -74,38 +68,31 @@ export class MainScreenComponent implements OnInit {
   constructor(
     public serialServ: SerialService,
     public gameManager: GameManagerService,
+    public sfx: SoundFXService,
     private modal: ModalService,
-    private toast: ToastService
+    private toast: ToastService,private router:Router
   ) {}
   ngOnInit(): void {
-    this.gameManager.sendSummary();
-    this.gameManager.podiumInSpotlightIndex.subscribe((index) => {
-      if (this.pointsConfig.autoSelect)
-        this.pointsConfig.selectedPodiumIndex = index ?? null;
+    if(!MainScreenComponent.onetime){
+      this.gameManager.sendSummary();
+      MainScreenComponent.onetime = true;
+    }
+    //send summary transfered to app component
+    this.serialServ.connectionStatus.subscribe((c) => {
+      if (c == 'disconnected') {
+        this.router.navigate(['/']);
+      }
     });
+    this.gameManager.editorMode(false);
   }
-  toggleAutoSelect() {
-    this.pointsConfig.autoSelect = !this.pointsConfig.autoSelect;
-    this.pointsConfig.selectedPodiumIndex =
-      this.gameManager.podiumInSpotlightIndex.value;
-  }
+
   setBrightness(event: Event) {
     const brightness = +event.target['value'];
     if (brightness == null) return;
     this.gameManager.setPodiumBrightness(brightness, brightness);
   }
   addPoints(value: number) {
-    const points = value;
-    const index = this.pointsConfig.selectedPodiumIndex ?? null;
-    if (points == null || points == 0) return;
-    if (index == null || index < 0) return;
-    this.gameManager.setPodiumPoints(
-      +index,
-      points,
-      this.pointsConfig.allowNegatives,
-      true
-    );
-    this.pointsConfig.pointsInput = null;
+    this.gameManager.addPoints(value);
   }
   isNumberKey(evt) {
     var charCode = evt.which ? evt.which : evt.keyCode;
@@ -120,8 +107,8 @@ export class MainScreenComponent implements OnInit {
   resetState() {
     this.gameManager.resetGame();
   }
-  onPodiumChange(podium: Podium,index:number) {
-    this.gameManager.onPodiumUpdate(podium,index);
+  onPodiumChange(podium: Podium, index: number) {
+    this.gameManager.onPodiumUpdate(podium, index);
   }
   ready() {
     this.gameManager.readyGame();
@@ -165,12 +152,7 @@ export class MainScreenComponent implements OnInit {
     this.serialServ.disconnect(false);
   }
   pointsChange(index: number, value: number) {
-    this.gameManager.setPodiumPoints(
-      +index,
-      value,
-      this.pointsConfig.allowNegatives,
-      false
-    );
+    this.gameManager.pointsChange(index, value);
   }
   alertDimmedPodium() {
     const brightnessPrc = Math.round(this.gameManager.brightnessFce / 2.55);

@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { AudioSettings, SoundEffectsSettings } from './settings-config.service';
 export class SoundFX {
   private _volume: number = 1;
   public get volume(): number {
@@ -48,6 +49,7 @@ export class SoundFXService {
         element.audio.load();
       }
     }
+
   }
   setAudioVolume(key: SoundEffects | string, volume: number) {
     this.audioEffects[key].volume = volume;
@@ -56,13 +58,47 @@ export class SoundFXService {
         volume * this.masterVolume;
     }
   }
-
+  applyAllAudioVolume(volume:Partial<AudioSettings & SoundEffectsSettings>){
+    if(!volume)return;
+    this.masterVolume = volume.master??1;
+    this.audioEffects.answer.volume = volume.answer??1;
+    this.audioEffects.correct.volume = volume.correct??1;
+    this.audioEffects.suspense.volume = volume.suspense??1;
+    this.audioEffects.wrong.volume = volume.wrong??1;
+  }
   playAudio(key: SoundEffects) {
     if (this.currentPlayingAudio) {
       this.audioEffects[this.currentPlayingAudio].audio.pause();
       this.audioEffects[this.currentPlayingAudio].audio.currentTime = 0;
     }
+    this.audioEffects[key].audio.currentTime = 0;
     this.audioEffects[key].play(this.masterVolume);
     this.currentPlayingAudio = key;
+  }
+  /* togglePauseResumeAudio() {
+    if(!this.currentPlayingAudio)return;
+    const currAudio = this.audioEffects[this.currentPlayingAudio].audio;
+
+    if(!currAudio.currentTime)return;
+    if (this.currentPlayingAudio) {
+      this.audioEffects[this.currentPlayingAudio].audio.pause();
+      this.audioEffects[this.currentPlayingAudio].audio.currentTime = 0;
+    }
+  } */
+  async stopAudio() {
+    if (!this.currentPlayingAudio) return;
+    const audio = this.audioEffects[this.currentPlayingAudio].audio;
+    const originalVolume = audio.volume;
+    const steps = 10;
+    const duration = 500; // fade out over 500ms
+
+    for (let i = steps; i >= 0; i--) {
+      audio.volume = originalVolume * (i / steps);
+      await new Promise(resolve => setTimeout(resolve, duration / steps));
+    }
+
+    audio.pause();
+    audio.currentTime = 0;
+    audio.volume = originalVolume; // restore original volume
   }
 }
