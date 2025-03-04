@@ -53,97 +53,17 @@
   </div>
 
   <div
-    class="main-window row g-2 py-5 px-3 m-0 rol-cols-5 h-100 position-relative"
-    [ngStyle]="{ opacity: (!previewMode && score.editMode | async) ? 0 : 1 }"
+    class="main-window"
+    [ngStyle]="{
+      opacity: (!previewMode && score.editMode | async) ? 0 : 1,
+      color: txtFormat.secondScrTxtColor
+    }"
   >
-    <ng-container
-      *ngFor="let item of podiums; let i = index; identifyBy: identify"
-    >
-      <div
-        *animate="'1000ms ease-in-out'"
-        class="col col-sp mt-0 pod-item"
-        style="
-          flex: 0 0 auto;
-          width: 20%;
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          top: 0px !important;
-        "
-      >
-        <div class="d-flex flex-column align-items-center mb-3">
-          <img
-            class="rounded-circle"
-            [src]="item.value.photo"
-            [defaultImage]="'profile'"
-            style="
-              max-width: 80%;
-              width: 500px;
-              aspect-ratio: 1/1;
-              max-height: 500px;
-              object-fit: cover;
-              object-position: center;
-              box-shadow: 0 0 0 10px var(--boder-color);
-              background: var(--background-color);
-            "
-            [ngStyle]="{
-              '--background-color': txtFormat?.imgBkgColor || '#FFFFFF',
-              '--boder-color': txtFormat?.imgBorderColor || '#000000'
-            }"
-          />
-        </div>
-        <h1
-          class="text-clamp-1 m-0 text-center text-shadow"
-          [ngStyle]="txtFormatStyle"
-        >
-          {{ item.value.title ?? "PODIUM " + (item.key + 1) }}
-        </h1>
-        @let points =item.value.scoring?.points ;
-        <div class="text-center d-flex flex-column">
-          <h2
-            class="mb-0 text-shadow text-center"
-            [ngStyle]="txtFormatStyle"
-            style="justify-content: center"
-          >
-            <span
-              id="number"
-              ScrollingNumbers
-              [value]="''+(points ?? 0)"
-            ></span>
-          </h2>
-          <label
-            style="margin-top: -5px"
-            class="text-shadow"
-            [ngStyle]="txtFormatStyle"
-            >Points</label
-          >
+    <div class="scoreboard">
 
-        </div>
-      </div></ng-container
-    >
-  </div>
-</div>
-<!-- <div class="d-flex">
-  @let order = score.podiums | async | keyvalue | orderBy :
-  'value.scoring.points' : true : false;
-  <div *ngFor="let item of order; let i = index; trackBy: identify">
-    <div *animate="'400ms ease-in-out'">
-      <img
-        [src]="item.value.photo"
-        style="
-          width: 100px;
-          height: 100px;
-          object-fit: contain;
-          object-position: center;
-        "
-      />
-      <p>
-        {{ item.value.title }}
-        {{ item.value.scoring.points }}pts
-      </p>
+    </div>
+    <div class="team">
+
     </div>
   </div>
-  {{ order | json }}
 </div>
- -->

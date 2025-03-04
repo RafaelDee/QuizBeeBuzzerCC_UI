@@ -45,6 +45,7 @@ export enum SendCommands {
   PodiumBrightness,
   PodiumColor,
   ClearPodium,
+  VerboseMode,
 }
 export enum ReceiveCommands {
   Acknowledge,

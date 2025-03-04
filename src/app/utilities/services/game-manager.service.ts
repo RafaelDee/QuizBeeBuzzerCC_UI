@@ -85,43 +85,13 @@ export class GameManagerService {
   buttonPlacing: number[] = [];
   brightnessBtn = 255;
   brightnessFce = 255;
-  addPoints(value: number) {
-    const points = value;
-    const index =
-      Number.parseInt(this.pointsConfig.selectedPodiumIndex) ?? null;
-    if (points == null || points == 0 || isNaN(points)) return;
-    if (index == null || index < 0 || isNaN(index)) return;
-    this.setPodiumPoints(
-      +index,
-      points,
-      this.pointsConfig.allowNegatives,
-      true
-    );
-    this.pointsConfig.pointsInput = null;
-  }
+
   private isEdit = false;
-  editorMode(value: boolean) {
-    this.isEdit = value;
-    this.channel.postMessage({
-      command: 'editor',
-      payload: this.isEdit,
-    });
-  }
-  pointsChange(index: number, value: number) {
-    this.setPodiumPoints(
-      +index,
-      value,
-      this.pointsConfig.allowNegatives,
-      false
-    );
-  }
   summarizing = false;
   constructor(
     private serial: SerialService,
-    private router: Router,
     private soundFX: SoundFXService,
-    private indexedDb: IndexedDbService,
-    private scoringService: ScoringService
+    private indexedDb: IndexedDbService
   ) {
     /* router.events.subscribe((val) => {
       if (val instanceof NavigationEnd) {
@@ -166,6 +136,36 @@ export class GameManagerService {
       }
     };
   }
+  addPoints(value: number) {
+    const points = value;
+    const index =
+      Number.parseInt(this.pointsConfig.selectedPodiumIndex) ?? null;
+    if (points == null || points == 0 || isNaN(points)) return;
+    if (index == null || index < 0 || isNaN(index)) return;
+    this.setPodiumPoints(
+      +index,
+      points,
+      this.pointsConfig.allowNegatives,
+      true
+    );
+    this.pointsConfig.pointsInput = null;
+  }
+  editorMode(value: boolean) {
+    this.isEdit = value;
+    this.channel.postMessage({
+      command: 'editor',
+      payload: this.isEdit,
+    });
+  }
+  pointsChange(index: number, value: number) {
+    this.setPodiumPoints(
+      +index,
+      value,
+      this.pointsConfig.allowNegatives,
+      false
+    );
+  }
+
   refresh() {
     this.channel.postMessage({
       command: 'refresh',

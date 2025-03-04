@@ -46,6 +46,7 @@
         </div>
       </div>
     </div>
+    <div *ngIf="debug">{{podium.battLevel}}% | {{podium.battVoltage}}mV</div>
     @let npc = namePlateColor;
     <div class="image d-flex align-items-center justify-content-center w-100">
       <div
@@ -58,7 +59,7 @@
         "
       >
         <img
-          class="rounded-circle"
+          class="rounded-2"
           [defaultImage]="'profile'"
           [src]="podium.photo"
         />
