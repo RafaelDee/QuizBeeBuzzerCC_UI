@@ -12,11 +12,13 @@ import { NavigationEnd, NavigationStart, Route, Router } from '@angular/router';
 import { constrain } from '../common-utils';
 import {
   PointsSystemReceiveCommands,
+  PointsSystemSendCommands,
   PointsSystemSendCommandsType,
   ScoringService,
 } from './scoring.service';
 import { SoundEffects, SoundFXService } from './soundFX.service';
 import { IndexedDbService } from './indexed-db.service';
+import { Channel } from '../channelHelper';
 export enum GameState {
   // used when nothing is happening, resets the podium interface
   Idle,
@@ -59,8 +61,9 @@ export interface Command<T extends SendCommands | ReceiveCommands> {
   providedIn: 'root',
 })
 export class GameManagerService {
-  channel: BroadcastChannel;
-  channelRec: BroadcastChannel;
+  headlessMode = false;
+  channel: Channel<PointsSystemReceiveCommands>;
+  channelRec: Channel<PointsSystemSendCommands>;
   pointsConfig: PointsConfig = {
     autoSelect: true,
     selectedPodiumIndex: null,
@@ -78,7 +81,9 @@ export class GameManagerService {
     this.savePointsConfig();
   }
 
-  podiums: Map<number, Podium> = new Map();
+  podiums: BehaviorSubject<Map<number, Podium>> = new BehaviorSubject(
+    new Map()
+  );
   curentGameState: GameState = GameState.Idle;
   podiumInSpotlightIndex = new BehaviorSubject<number>(null);
   podiumInSpotlight = new BehaviorSubject<Podium>(null);
@@ -99,13 +104,25 @@ export class GameManagerService {
       }
     }); */
     this.init();
-    this.channel = new BroadcastChannel('sync_channel_points-' + pairKey);
-    this.channelRec = new BroadcastChannel(
-      'sync_channel_points-send-' + pairKey
-    );
+    this.channel = new Channel('sync_channel_points-' + pairKey);
+    this.channelRec = new Channel('sync_channel_points-send-' + pairKey);
     this.podiumInSpotlightIndex.subscribe((index) => {
       if (this.pointsConfig.autoSelect)
         this.pointsConfig.selectedPodiumIndex = index ?? null;
+    });
+    this.podiums.subscribe((pod) => {
+      for (let podium of pod) {
+        this.channel.postMessage({
+          command: 'setPodium',
+          payload: { key: podium[0], podium: podium[1] },
+        } as PointsSystemReceiveCommands);
+      }
+      this.channel.postMessage({
+        command: 'update',
+      } as PointsSystemReceiveCommands);
+    });
+    this.serial.connectionStatus.subscribe((c) => {
+      this.headlessMode = false;
     });
     this.channelRec.onmessage = (msg) => {
       console.log(msg?.data);
@@ -118,7 +135,7 @@ export class GameManagerService {
         case 'summary':
           if (this.summarizing) return;
           this.summarizing = true;
-          this.podiums.forEach((p, key) => {
+          this.podiums.value.forEach((p, key) => {
             this.channel.postMessage({
               command: 'setPodium',
               payload: { key, podium: p },
@@ -126,7 +143,7 @@ export class GameManagerService {
           });
           this.channel.postMessage({
             command: 'update',
-          } as PointsSystemReceiveCommands);
+          });
           this.channel.postMessage({
             command: 'editor',
             payload: this.isEdit,
@@ -135,6 +152,9 @@ export class GameManagerService {
           break;
       }
     };
+  }
+  setHeadlessMode(){
+    this.headlessMode = true;
   }
   addPoints(value: number) {
     const points = value;
@@ -172,7 +192,7 @@ export class GameManagerService {
     } as PointsSystemReceiveCommands);
   }
   forceSync() {
-    this.podiums.forEach((p, key) => {
+    this.podiums.value.forEach((p, key) => {
       this.channel.postMessage({
         command: 'setPodium',
         payload: { key, podium: p },
@@ -197,7 +217,7 @@ export class GameManagerService {
   summaryMode = false;
   sendSummary() {
     this.summaryMode = true;
-    this.podiums.clear();
+    this.podiums.next(new Map());
     this.buttonPlacing = [];
     this.podiumInSpotlight.next(null);
     this.podiumInSpotlightIndex.next(null);
@@ -206,17 +226,17 @@ export class GameManagerService {
   swapPodium(currentIndex: number, targetIndex: number) {
     if (currentIndex == targetIndex) return;
     const shiftLeft = currentIndex < targetIndex;
-    const currentPodium = this.podiums.get(currentIndex);
+    const currentPodium = this.podiums.value.get(currentIndex);
     if (!shiftLeft) {
       for (let i = currentIndex; i > targetIndex; i--) {
-        this.updatePodiums(i, this.podiums.get(i - 1));
+        this.podiums.value.set(i, this.podiums.value.get(i - 1));
       }
     } else {
       for (let i = currentIndex; i < targetIndex; i++) {
-        this.updatePodiums(i, this.podiums.get(i + 1));
+        this.podiums.value.set(i, this.podiums.value.get(i + 1));
       }
     }
-    this.updatePodiums(targetIndex, currentPodium);
+    this.podiums.next(this.podiums.value);
     /*
     const podiumAData = this.podiums.get(podiumA);
     const podiumBData = this.podiums.get(podiumB);
@@ -289,33 +309,24 @@ export class GameManagerService {
 
     this.soundFX.playAudio('wrong');
   }
-  updatePodiums(key: number, value: Podium) {
-    this.podiums.set(key, value);
-    this.channel.postMessage({
-      command: 'setPodium',
-      payload: { key, podium: value },
-    } as PointsSystemReceiveCommands);
-    if (!this.summaryMode)
-      this.channel.postMessage({
-        command: 'update',
-      } as PointsSystemReceiveCommands);
-  }
+
   clearPodiumPoints() {
     //this.setToAllPodiums({ scoring: { points: 0, streak: 0 } });
     //cannot use setToAllPodiums at it links all scoring, tried removing link, but failed
-    const keys = Array.from(this.podiums.keys());
+    const keys = Array.from(this.podiums.value.keys());
     for (let i = 0; i < keys.length; i++) {
       const index = keys[i];
       /* const val = this.podiums.get(key);
       const p = { ...val, ...podium };
       this.updatePodiums(key, p);
       this.savePodiumState(p); */
-      if (!this.podiums.has(index)) return;
-      const podium = this.podiums.get(index);
+      if (!this.podiums.value.has(index)) return;
+      const podium = this.podiums.value.get(index);
       podium.scoring = { points: 0, streak: 0 };
       this.savePodiumState(podium);
-      this.updatePodiums(index, podium);
+      this.podiums.value.set(index, podium);
     }
+    this.podiums.next(this.podiums.value);
   }
   addPoidumConfigPoints(value: number) {
     if (value == null || isNaN(value)) return;
@@ -335,11 +346,12 @@ export class GameManagerService {
     const scoring: {
       points: number;
       streak: number;
-    } = this.podiums.get(index)?.scoring ?? { points: 0, streak: 0 };
+    } = this.podiums.value.get(index)?.scoring ?? { points: 0, streak: 0 };
     if (addPoints) scoring.points += value;
     else scoring.points = value;
     if (!allowNegatives) scoring.points = Math.max(scoring.points, 0);
     this.setPodium(index, { scoring });
+    this.podiums.next(this.podiums.value);
   }
   async loadPointsConfig() {
     const json = await this.indexedDb.getItem('pointsConfig');
@@ -363,9 +375,10 @@ export class GameManagerService {
     const scoring: {
       points: number;
       streak: number;
-    } = this.podiums.get(index)?.scoring ?? { points: 0, streak: 0 };
+    } = this.podiums.value.get(index)?.scoring ?? { points: 0, streak: 0 };
     scoring.streak++;
     this.setPodium(index, { scoring });
+    this.podiums.next(this.podiums.value);
   }
   /**from 0 to 255 */
   setPodiumBrightness(
@@ -387,7 +400,7 @@ export class GameManagerService {
     options: { include?: number[]; exclude?: number[] } = {}
   ) {
     if (this.podiums == null) return;
-    const keys = options.include ?? Array.from(this.podiums.keys());
+    const keys = options.include ?? Array.from(this.podiums.value.keys());
     if (options.exclude) {
       options.exclude.forEach((e) => {
         const index = keys.indexOf(e);
@@ -404,27 +417,29 @@ export class GameManagerService {
       this.updatePodiums(key, p);
       this.savePodiumState(p); */
     }
+    this.podiums.next(this.podiums.value);
   }
   setPodium(index: number, podium: Partial<Podium> = null) {
-    if (!this.podiums.has(index)) this.updatePodiums(index, new Podium());
     if (podium == null) return;
-
-    const pod = { ...this.podiums.get(index), ...podium };
+    const pod = { ...this.podiums.value.get(index)??new Podium(), ...podium };
+    this.podiums.value.set(index,pod)
     this.savePodiumState(pod);
-    this.updatePodiums(index, pod);
   }
-  clearPodium() {
-    this.podiums.clear();
-    this.serial.write(SendCommands.ClearPodium);
-    this.podiums.forEach((p, key) => {
-      this.channel.postMessage({
-        command: 'setPodium',
-        payload: { key, podium: p },
-      } as PointsSystemReceiveCommands);
-    });
+  /* updatePodiums(key: number, value: Podium) {
+    this.podiums.value.set(key, value);
+    this.podiums.next(this.podiums.value);
     this.channel.postMessage({
-      command: 'update',
+      command: 'setPodium',
+      payload: { key, podium: value },
     } as PointsSystemReceiveCommands);
+    if (!this.summaryMode)
+      this.channel.postMessage({
+        command: 'update',
+      } as PointsSystemReceiveCommands);
+  } */
+  clearPodium() {
+    this.podiums.next(new Map());
+    this.serial.write(SendCommands.ClearPodium);
   }
   processCommand(command: Command<ReceiveCommands>) {
     switch (command.command) {
@@ -433,6 +448,7 @@ export class GameManagerService {
         const index = +cmd[0];
         const status = dnrSeverity[+cmd[1]];
         this.setPodium(index, { dnr: status });
+        this.podiums.next(this.podiums.value);
         break;
       case ReceiveCommands.PodiumAdded:
         this.podiumAdded(command.payload);
@@ -490,6 +506,7 @@ export class GameManagerService {
     const battVoltage = +cmd[2];
     const isCharging = +cmd[3] == 1;
     this.setPodium(index, { battLevel, battVoltage, isCharging });
+    this.podiums.next(this.podiums.value);
   }
   podiumPlacement(payload: string) {
     const cmd = this.splitPayload(payload, 2);
@@ -510,6 +527,7 @@ export class GameManagerService {
     const localStrPod = await this.indexedDb.getItem(macAddr);
     const podium = JSON.parse(localStrPod);
     this.setPodium(index, { ...podium, dnr: status, macAddr });
+    this.podiums.next(this.podiums.value);
   }
   onPodiumUpdate(podium: Podium, index: number, macAddr: string = null) {
     this.savePodiumState(podium, macAddr);

@@ -50,7 +50,7 @@
       gameManager.curentGameState == GameState.QuizReady);
       <div
         *ngFor="
-          let item of gameManager.podiums | keyvalue;
+          let item of gameManager.podiums | async | keyvalue;
           let i = index;
           trackBy: identify
         "
@@ -108,7 +108,10 @@
         </div>
       </div>
       <div>
-        <button (click)="gameManager.refresh()" class="btn btn-sm btn-danger me-2">
+        <button
+          (click)="gameManager.refresh()"
+          class="btn btn-sm btn-danger me-2"
+        >
           <i class="fa-solid fa-arrows-rotate"></i> Pts. Page
         </button>
         <button
@@ -204,12 +207,15 @@
                 </button>
               </div>
             </div>
-            <div><button *ngIf="debugMode"
-              class="btn btn-secondary"
-              (click)="gameManager.clearPodium()"
-            >
-              Clear Mem
-            </button></div>
+            <div>
+              <button
+                *ngIf="debugMode"
+                class="btn btn-secondary"
+                (click)="gameManager.clearPodium()"
+              >
+                Clear Mem
+              </button>
+            </div>
           </div>
           <hr class="d-block d-md-none" />
           <div class="col-md-4">

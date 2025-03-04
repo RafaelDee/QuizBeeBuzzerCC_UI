@@ -19,6 +19,10 @@ export interface PointsSystemReceiveCommands {
   command: PointsSystemReceiveCommandsType;
   payload?: any;
 }
+export interface PointsSystemSendCommands {
+  command: PointsSystemSendCommandsType;
+  payload?: any;
+}
 export type PointsSystemSendCommandsType = 'summary';
 @Injectable({
   providedIn: 'root',
