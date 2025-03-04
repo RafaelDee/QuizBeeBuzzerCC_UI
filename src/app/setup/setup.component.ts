@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { SerialService } from '../utilities/services/serial.service';
 import { CommonModule } from '@angular/common';
 import { filter, first, firstValueFrom } from 'rxjs';
+import { ToastService } from '../utilities/services/toast/toast.service';
 /**TODO:
  * detect browser WebSerial support
  *
@@ -19,7 +20,11 @@ import { filter, first, firstValueFrom } from 'rxjs';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SetupComponent {
-  constructor(public serialServ: SerialService, private router: Router) {
+  constructor(
+    public serialServ: SerialService,
+    private router: Router,
+    private toast: ToastService
+  ) {
     this.initialize(true);
     this.waitForConnection();
   }
@@ -29,8 +34,16 @@ export class SetupComponent {
     );
     this.router.navigate(['main']);
   }
-  async initialize(auto:boolean = false) {
-    if(auto && this.serialServ.connectionStatus.value == 'disconnected-no-recon')return;
-    this.serialServ.initializeSerial();
+  async initialize(auto: boolean = false) {
+    if (
+      auto &&
+      this.serialServ.connectionStatus.value == 'disconnected-no-recon'
+    )
+      return;
+    try {
+      await this.serialServ.initializeSerial();
+    } catch (err) {
+      this.toast.showErrorOperation(err);
+    }
   }
 }

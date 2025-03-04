@@ -61,7 +61,6 @@ export interface Command<T extends SendCommands | ReceiveCommands> {
   providedIn: 'root',
 })
 export class GameManagerService {
-  headlessMode = false;
   channel: Channel<PointsSystemReceiveCommands>;
   channelRec: Channel<PointsSystemSendCommands>;
   pointsConfig: PointsConfig = {
@@ -110,6 +109,7 @@ export class GameManagerService {
       if (this.pointsConfig.autoSelect)
         this.pointsConfig.selectedPodiumIndex = index ?? null;
     });
+
     this.podiums.subscribe((pod) => {
       for (let podium of pod) {
         this.channel.postMessage({
@@ -120,9 +120,6 @@ export class GameManagerService {
       this.channel.postMessage({
         command: 'update',
       } as PointsSystemReceiveCommands);
-    });
-    this.serial.connectionStatus.subscribe((c) => {
-      this.headlessMode = false;
     });
     this.channelRec.onmessage = (msg) => {
       console.log(msg?.data);
@@ -152,9 +149,6 @@ export class GameManagerService {
           break;
       }
     };
-  }
-  setHeadlessMode(){
-    this.headlessMode = true;
   }
   addPoints(value: number) {
     const points = value;
@@ -213,6 +207,9 @@ export class GameManagerService {
     });
 
     this.sendSummary();
+    if (this.serial.headlessMode) {
+      //load all podiums in storage, but cannot due to not having index
+    }
   }
   summaryMode = false;
   sendSummary() {
@@ -419,10 +416,17 @@ export class GameManagerService {
     }
     this.podiums.next(this.podiums.value);
   }
+  addPodiumHeadlessMode() {
+    this.setPodium(this.podiums.value.size, new Podium());
+    this.podiums.next(this.podiums.value)
+  }
   setPodium(index: number, podium: Partial<Podium> = null) {
     if (podium == null) return;
-    const pod = { ...this.podiums.value.get(index)??new Podium(), ...podium };
-    this.podiums.value.set(index,pod)
+    const pod = {
+      ...(this.podiums.value.get(index) ?? new Podium()),
+      ...podium,
+    };
+    this.podiums.value.set(index, pod);
     this.savePodiumState(pod);
   }
   /* updatePodiums(key: number, value: Podium) {
@@ -540,6 +544,7 @@ export class GameManagerService {
     } as PointsSystemReceiveCommands);
   }
   savePodiumState(podium: Podium, macAddr: string = null) {
+    if (this.serial.headlessMode) return;
     if (macAddr) podium.macAddr = macAddr;
     this.indexedDb.setItem(macAddr ?? podium.macAddr, JSON.stringify(podium));
   }

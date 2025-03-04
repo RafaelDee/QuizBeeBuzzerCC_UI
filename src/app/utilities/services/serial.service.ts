@@ -92,6 +92,7 @@ export class SerialService {
   stream = this._stream.asObservable();
   serialSupport = new BehaviorSubject<boolean>(null);
   connectedSerialDevice: SerialDevice;
+  headlessMode = false;
   connectionStatus = new BehaviorSubject<ConnectionStatus>('disconnected');
   private serial: Serial;
   channel: BroadcastChannel;
@@ -101,6 +102,13 @@ export class SerialService {
   }
   private set isLeader(value) {
     this._isLeader = value;
+  }
+  setHeadlessMode(mode: boolean) {
+    this.headlessMode = mode;
+    if (this.headlessMode) {
+      this.connectionStatus.next('connected');
+      this.isLeader.next(true);
+    }
   }
   private channelMessage = new BehaviorSubject<InterConnectPacket>(null);
   constructor() {
@@ -150,6 +158,8 @@ export class SerialService {
       }
     });
     this.connectionStatus.asObservable().subscribe((conn) => {
+      if (conn == 'disconnected' || conn == 'disconnected-no-recon')
+        this.headlessMode = false;
       if (!this.isLeader.value) return;
       this.channel.postMessage({
         type: 'conn-status',
@@ -175,7 +185,12 @@ export class SerialService {
     this.serialSupport.next(serialSupported);
     if (!serialSupported) return;
     this.serial = await navigator.serial;
-    await this.connectToDevice();
+    try {
+      await this.connectToDevice();
+    } catch (err) {
+      this.connectionStatus.next('disconnected');
+      throw err;
+    }
   }
   /**returns true when theres one */
   async checkInstances(): Promise<boolean> {
@@ -226,7 +241,9 @@ export class SerialService {
   } */
 
   async disconnect(recon: boolean = true) {
-    await this.connectedSerialDevice.close();
+    if (!this.headlessMode) {
+      await this.connectedSerialDevice.close();
+    }
     //use different listener, prob use connectedSerialDevice
     this.connectionStatus.next(
       recon ? 'disconnected' : 'disconnected-no-recon'
@@ -242,7 +259,7 @@ export class SerialService {
   sub: Subscription;
   async connectToDevice() {
     const ports = await this.serial.getPorts();
-    console.log(`available ports: ${ports.length}`);
+    if (ports.length == 0) throw new NoValidDevices();
     const serialDevices = await Promise.all(
       ports?.map((p) => new SerialDevice(p))
     );
@@ -461,6 +478,7 @@ export class SerialService {
       idempotencyToken = this.currentidempotencyToken;
       this.currentidempotencyToken++;
     }
+    if (this.headlessMode) return;
     const wr = `${+idempotencyToken}:${command} ${payload ?? ''}\n`;
 
     this.serialWriteQueue.add(idempotencyToken);
@@ -503,6 +521,9 @@ export class SerialService {
 export class SerialAlreadyConnected extends Error {}
 export class SerialConnecting extends Error {}
 export class NoValidConnections extends Error {}
+export class NoValidDevices extends Error {
+  override message: string = 'No Valid Devices';
+}
 /* const listener = this.listenToDevice(port);
 const command = await firstValueFrom(
   listener.data.pipe(

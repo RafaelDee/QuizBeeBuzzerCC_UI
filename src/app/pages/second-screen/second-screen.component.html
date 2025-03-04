@@ -60,7 +60,9 @@
     }"
   >
     <div class="scoreboard">
-
+      <div *ngFor="let podium of podiums">
+        <h1>{{podium.value.title}}</h1>
+      </div>
     </div>
     <div class="team">
 

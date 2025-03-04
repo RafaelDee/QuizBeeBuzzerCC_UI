@@ -50,7 +50,7 @@ declare global {
     ScrollingNumbersDirective,
     ScrollingNumberComponent,
   ],
-  templateUrl: './second-screen.component.html',
+  templateUrl: './second-screen.component.old.html',
   styleUrls: ['./second-screen.component.scss'],
   animations: [
     trigger('fadeIn', [

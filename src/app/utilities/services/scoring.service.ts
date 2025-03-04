@@ -1,4 +1,9 @@
-import { ChangeDetectorRef, EventEmitter, Injectable, OnInit } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  EventEmitter,
+  Injectable,
+  OnInit,
+} from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { InterConnectPacket, pairKey } from './serial.service';
 import { Podium } from '../../values/podium.values';
@@ -35,7 +40,11 @@ export class ScoringService {
     secondScrTxtColor: string;
     imgBorderColor: string;
     imgBkgColor: string;
-  }>(null);
+  }>({
+    secondScrTxtColor: '#FFFFFF',
+    imgBorderColor: '#FFFFFF',
+    imgBkgColor: '#00000',
+  });
   private _isLeader = new BehaviorSubject<boolean>(null);
   onRefresh = new EventEmitter(null);
   public get isLeader() {
