@@ -6,6 +6,7 @@ import { SerialConnectionGuard } from './utilities/guards/SerialConnection.guard
 import { NotFoundComponent } from './pages/not-found/not-found.component';
 import { QuizEditorComponent } from './pages/quiz-editor/quiz-editor.component';
 import { SettingsComponent } from './settings/settings.component';
+import { AboutComponent } from './pages/about/about.component';
 
 export const routes: CustomRoutes = [
   { path: '', pathMatch: 'full', component: SetupComponent },
@@ -28,7 +29,7 @@ export const routes: CustomRoutes = [
     component: SecondScreenComponent,
     data: {
       navItem: {
-        name: 'Points',
+        name: 'Scoreboard',
         routeOpenNewWindow: true,
         icon: 'fa-solid fa-arrow-up-right-from-square',
       },
@@ -45,6 +46,7 @@ export const routes: CustomRoutes = [
       },
     },
   },
+  {path:'about',component:AboutComponent,data:{navItem:{name:'About'}}},
   { path: '404', component: NotFoundComponent, title: '404!' },
   { path: '**', redirectTo: '404' },
 ];

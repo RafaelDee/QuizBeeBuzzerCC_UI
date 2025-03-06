@@ -9,7 +9,7 @@ export class ScrollingNumbersDirective implements OnInit {
   ngOnInit(): void {
     this.setup();
     this.init = true;
-    if(this.needUpdate){
+    if (this.needUpdate) {
       this.update();
     }
   }
@@ -22,21 +22,20 @@ export class ScrollingNumbersDirective implements OnInit {
   }
   @Input() public set value(value: string) {
     this._value = value;
-    console.log(this._value)
-    if(value == '0') console.trace();
-    if (this.init) this.update();else this.needUpdate = true;
+    console.log(this._value);
+    if (this.init) this.update();
+    else this.needUpdate = true;
   }
   async scrollNumber(digits) {
     this.el.nativeElement
       .querySelectorAll('span[data-value]')
       .forEach((tick, i) => {
-
         tick['style'].transform = `translateY(-${
           100 * (digits[i] == '-' ? 0 : parseInt(digits[i]) + 1)
         }%)`;
       });
     setTimeout(() => {
-      this.el.nativeElement['style'].width = `${digits.length * 30}px`;
+      this.el.nativeElement['style'].width = `${digits.length * 38}px`;
     }, 100);
   }
 
@@ -69,6 +68,13 @@ export class ScrollingNumbersDirective implements OnInit {
     setTimeout(() => {
       firstDigit.remove();
     }, 1);
+    /* setTimeout(() => {
+      firstDigit.classList.remove('visible');
+    }, 1000);
+
+    setTimeout(() => {
+      firstDigit.remove();
+    }, 1); */
   }
 
   setup() {
@@ -80,7 +86,7 @@ export class ScrollingNumbersDirective implements OnInit {
       this.addDigit('0', true);
     }
 
-    this.scrollNumber(['0']);
+    this.scrollNumber(this.value);
 
     setTimeout(() => this.scrollNumber(digits), 2000);
     this.currNum = this.value;

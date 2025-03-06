@@ -17,55 +17,221 @@
   </div>
 </div>
 <div
-  class="h-100 position-relative"
+  class="h-100 position-relative prevent-select"
   [ngStyle]="{ 'background-image': 'url(' + (score.bkgImg | async) + ')' }"
   style="
     background-position: center;
     background-repeat: no-repeat;
     background-size: cover;
+    overflow: hidden;
   "
 >
-  @let txtFormat = score?.textFormat | async; @let txtFormatStyle = { 'color':
-  txtFormat?.secondScrTxtColor??'#FFFFFF'};
-  <div
-    class="main-window text-white position-absolute top-0 start-0 bottom-0 end-0 d-flex flex-column justify-content-center align-items-center"
-    [ngStyle]="{ opacity: (!previewMode && score.editMode | async) ? 1 : 0 }"
-  >
-    @let prepImg = score.prepImg|async;
-    <img
-      class="mb-3"
-      *ngIf="prepImg"
-      [src]="prepImg"
-      style="max-width: 30vw; max-height: 30vh"
-    />
-    <h1 [ngStyle]="txtFormatStyle">Preparing</h1>
+  @let showWindow = (!previewMode && score.editMode | async);
+
+  <div class="p-3 p-md-4 p-lg-5 h-100">
+    @let txtFormat = score?.textFormat | async; @let txtFormatStyle = { 'color':
+    txtFormat?.secondScrTxtColor}; @let onAnsReveal = (score.onAnsReveal |
+    async);
     <div
-      class="snippet"
-      data-title="dot-pulse"
+      [ngStyle]="{ opacity: onAnsReveal === true && !showWindow ? 1 : 0 }"
+      class="correct-ans-window ans-reaveal-window position-absolute top-0 start-0 bottom-0 end-0 d-flex flex-column justify-content-center align-items-center"
+      [ngClass]="
+        onAnsReveal === true && !showWindow ? 'blinking-element' : 'reset-blink'
+      "
+    >
+      <h1 style="font-size: 15rem">
+        <i class="fa-solid fa-check neon"></i>
+      </h1>
+    </div>
+
+    <div
+      [ngStyle]="{ opacity: onAnsReveal === false && !showWindow ? 1 : 0 }"
+      class="wrong-ans-window ans-reaveal-window position-absolute top-0 start-0 bottom-0 end-0 d-flex flex-column justify-content-center align-items-center"
+      [ngClass]="
+        onAnsReveal === false && !showWindow
+          ? 'blinking-element'
+          : 'reset-blink'
+      "
+    >
+      <h1 style="font-size: 15rem">
+        <i class="fa-solid fa-xmark neon"></i>
+      </h1>
+    </div>
+    <div
+      class="main-window h-100"
       [ngStyle]="{
-        '--background-color': txtFormat?.secondScrTxtColor || '#FFFFFF'
+        opacity: (!previewMode && score.editMode | async) ? 0 : 1,
+        color: txtFormat.secondScrTxtColor
       }"
     >
-      <div class="stage">
-        <div class="dot-pulse"></div>
+      <div class="scoreboard position-relative">
+        <ng-container
+          *ngFor="let item of podiums; let i = index; identifyBy: identify"
+        >
+          <div
+            *animate="'1000ms ease-in-out'"
+            class="d-flex justify-content-between align-items-center pod-item w-100"
+          >
+            <h1
+              style="font-size: 3rem"
+              class="text-clamp-1 m-0 text-shadow pe-3"
+              [ngStyle]="txtFormatStyle"
+            >
+              {{ item.value.title?.trim() ?? "PODIUM " + (item.key + 1) }}
+            </h1>
+            @let points =item.value.scoring?.points ;
+            <div class="text-center d-flex flex-column" style="min-width: 150px">
+              <h2
+                class="mb-0 text-shadow text-center"
+                [ngStyle]="txtFormatStyle"
+                style="justify-content: center"
+              >
+                <span style="font-size: 4rem;"
+                  id="number"
+                  ScrollingNumbers
+                  [value]="'' + (points ?? 0)"
+                ></span>
+              </h2>
+              <label
+                class="text-shadow"
+                [ngStyle]="txtFormatStyle"
+                >Points</label
+              >
+            </div>
+          </div>
+        </ng-container>
+      </div>
+      <div
+        #container
+        class="team row g-3 m-0 p-0 align-content-center justify-content-center position-relative"
+        style="align-self: stretch"
+      >
+        @let test = score.podiums | async ; @let spotlight =
+        score.selectedPodium| async ;
+        <ng-container
+          *ngFor="let item of podiumsTeam; let i = index; identifyBy: identify"
+        >
+          <div
+            *animate="'1000ms ease-in-out'"
+            class="team-item col p-2"
+            [ngClass]="
+              spotlight == null
+                ? 'col-4'
+                : spotlight == i
+                ? 'col-12 order-first'
+                : 'col-2'
+            "
+            style="max-height: 45vh"
+            [ngStyle]="{
+              'z-index': spotlight === i ? 100 : 'auto',
+              'max-height': container.clientHeight / 2 + 'px'
+            }"
+          >
+            <div
+              class="d-flex flex-column align-items-center p-3 h-100 justify-content-center"
+              [ngStyle]="{
+                'max-height': container.clientHeight / 2 + 'px'
+              }"
+            >
+              <div
+                class="h-100 mb-2"
+                style="
+                  aspect-ratio: 1 / 1;
+                  max-width: 100%;
+                  padding: 20px;
+                  min-height: 100%;
+                "
+              >
+                <img
+                  class="rounded-2"
+                  [src]="item.photo"
+                  width="1000"
+                  height="1000"
+                  style="
+                    flex-shrink: 1;
+                    max-width: 100%;
+                    max-width: 100%;
+                    height: 100%;
+                    min-height: 100%;
+                    aspect-ratio: 1 / 1;
+                    object-fit: cover;
+                    object-position: center;
+                    box-shadow: 0 0 0 10px var(--boder-color);
+                    background: var(--background-color);
+                  "
+                  [ngStyle]="{
+                    '--background-color': txtFormat?.imgBkgColor,
+                    '--boder-color': txtFormat?.imgBorderColor
+                  }"
+                  [defaultImage]="'profile'"
+                />
+              </div>
+
+              <!-- <img
+                class="rounded-2 m-3"
+                style="
+                  aspect-ratio: 1/1;
+                  max-width: 15vw;
+                  width: 100%;
+                  height: 100%;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  box-shadow: 0 0 0 10px var(--boder-color);
+                  background: var(--background-color);
+                "
+                [ngStyle]="{
+                  '--background-color': txtFormat?.imgBkgColor,
+                  '--boder-color': txtFormat?.imgBorderColor
+                }"
+                [src]="item.photo"
+                [defaultImage]="'profile'"
+              /> -->
+              <div>
+                <h1
+                  [ngStyle]="{
+                    'font-size':
+                      spotlight == null
+                        ? null
+                        : spotlight == i
+                        ? '3rem'
+                        : '1.5rem',
+                    color: txtFormatStyle.color
+                  }"
+                  class="text-clamp-1 m-0 text-center text-shadow"
+                >
+                  {{ item.title ?? "PODIUM " + (i + 1) }}
+                </h1>
+              </div>
+            </div>
+          </div>
+        </ng-container>
       </div>
     </div>
-  </div>
-
-  <div
-    class="main-window"
-    [ngStyle]="{
-      opacity: (!previewMode && score.editMode | async) ? 0 : 1,
-      color: txtFormat.secondScrTxtColor
-    }"
-  >
-    <div class="scoreboard">
-      <div *ngFor="let podium of podiums">
-        <h1>{{podium.value.title}}</h1>
+    <div
+      style="pointer-events: none"
+      class="main-window position-absolute top-0 start-0 bottom-0 end-0 d-flex flex-column justify-content-center align-items-center"
+      [ngStyle]="{ opacity: showWindow ? 1 : 0 }"
+    >
+      @let prepImg = score.prepImg|async;
+      <img
+        class="mb-3"
+        *ngIf="prepImg"
+        [src]="prepImg"
+        style="max-width: 30vw; max-height: 30vh"
+      />
+      <h1 [ngStyle]="txtFormatStyle">Preparing</h1>
+      <div
+        class="snippet"
+        data-title="dot-pulse"
+        [ngStyle]="{
+          '--background-color': txtFormat?.secondScrTxtColor || '#FFFFFF'
+        }"
+      >
+        <div class="stage">
+          <div class="dot-pulse"></div>
+        </div>
       </div>
-    </div>
-    <div class="team">
-
     </div>
   </div>
 </div>

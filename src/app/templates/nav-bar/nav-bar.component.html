@@ -12,7 +12,7 @@
       <img
         class="invert me-2"
         [ngClass]="{ 'd-none': titleType == 'title' }"
-        src="/assets/images/applogo.png"
+        src="./assets/images/applogo.png"
         height="30"
       />
       {{ titleType != "logo" ? title : "" }}
@@ -53,6 +53,7 @@
   <div class="offcanvas-body">
     <ul class="nav-text-blend navbar-nav mb-auto mb-lg-0">
       <li class="nav-item" *ngFor="let nav of navItems">
+
         <a
           *ngIf="!nav.children"
           class="nav-link"

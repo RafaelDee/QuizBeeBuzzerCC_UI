@@ -46,7 +46,9 @@
         </div>
       </div>
     </div>
-    <div *ngIf="debug">{{podium.battLevel}}% | {{podium.battVoltage}}mV</div>
+    <div *ngIf="debug">
+      {{ podium.battLevel }}% | {{ podium.battVoltage }}mV
+    </div>
     @let npc = namePlateColor;
     <div class="image d-flex align-items-center justify-content-center w-100">
       <div
@@ -61,6 +63,12 @@
         <img
           class="rounded-2"
           [defaultImage]="'profile'"
+          style="
+            width: 100%;
+            aspect-ratio: 1/1;
+            object-fit: cover;
+            object-position: center;
+          "
           [src]="podium.photo"
         />
         <div *ngIf="edit" class="position-absolute top-0 left-0">
@@ -87,7 +95,7 @@
           style="background-color: transparent; border-color: transparent"
           [ngStyle]="{ 'background-color': !npc.isClass ? npc.color : null }"
           [ngModel]="podiumTitle"
-          (change)="podium.title = $event.target['value']; podiumChanged()"
+          (change)="titleChange($event)"
           name="title"
           [placeholder]="'Podium ' + readableIndex"
         />
@@ -119,6 +127,15 @@
         (click)="onSpotlight.emit()"
       >
         Spotlight
+      </button>
+      <button
+        *ngIf="headlessMode"
+        type="button"
+        [disabled]="disableSpotlightBtn && !disableBtnSafety"
+        class="btn btn-secondary btn-sm"
+        (click)="onBtnPress.emit()"
+      >
+        Btn
       </button>
     </div>
     <div class="text-center d-flex flex-column">

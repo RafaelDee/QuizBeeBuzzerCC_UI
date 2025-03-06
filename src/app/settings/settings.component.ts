@@ -19,6 +19,7 @@ import { GameManagerService } from '../utilities/services/game-manager.service';
 import { EmptyContentComponent } from '../templates/async/empty/empty/empty-content.component';
 import { AdvancedImgDirective } from '../utilities/directives/advanced-img.directive';
 import { SettingsConfigService } from '../utilities/services/settings-config.service';
+import { SimpleModalComponent } from '../utilities/modal/modal-component/simple-modal.component';
 
 @Component({
   selector: 'app-settings',
@@ -27,7 +28,8 @@ import { SettingsConfigService } from '../utilities/services/settings-config.ser
     CommonModule,
     FormsModule,
     SecondScreenComponent,
-    EmptyContentComponent,AdvancedImgDirective
+    EmptyContentComponent,
+    AdvancedImgDirective,
   ],
   templateUrl: './settings.component.html',
   styles: `
@@ -40,7 +42,8 @@ export class SettingsComponent implements OnDestroy, OnInit {
   constructor(
     public soundFx: SoundFXService,
     private modal: ModalService,
-    public gameManager: GameManagerService,public settingsServ:SettingsConfigService
+    public gameManager: GameManagerService,
+    public settingsServ: SettingsConfigService
   ) {
     this.gameManager.editorMode(true);
   }
@@ -50,7 +53,18 @@ export class SettingsComponent implements OnDestroy, OnInit {
   ngOnDestroy(): void {
     //this.gameManager.editorMode(false);
   }
-  uploadImage(id:string) {
+  async clearMemory() {
+    await SimpleModalComponent.showMessage(
+      this.modal,
+      'Clearing Memory',
+      `are you sure you want to <b class="text-danger">Clear Memory</b>`,
+      { title: 'Clear', params: { color: 'danger', dismiss: true } },
+      { title: 'Cancel', params: { dismiss: true } }
+    );
+    this.gameManager.clearMemory();
+    this.settingsServ.clear();
+  }
+  uploadImage(id: string) {
     const modalRef = this.modal.open(FileManagerModalComponent, {
       backdrop: 'static',
     });

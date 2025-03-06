@@ -4,16 +4,24 @@
     class="text-center h-100 d-flex justify-content-center align-items-center"
   >
     <div>
-      <img class="mb-3" style="width: 100px;" src="/assets/images/applogo.png">
-      <h1><i class="fa-solid fa-plug"></i></h1>
-      <h5>{{ connStatus | titlecase }}</h5>
+      <div class="mb-3">
+        <img style="width: 100px" src="./assets/images/applogo.png" />
+        <h4>Buzzer CC</h4>
+      </div>
+      <h1>
+        <i
+          class="fa-solid"
+          [ngClass]="connStatus == 'connecting' ? 'fa-gear fa-spin' : 'fa-plug'"
+        ></i>
+      </h1>
+      <h5>{{ connMsg[connStatus] | titlecase }}</h5>
       <div class="mb-3">
         <button
           class="btn btn-primary me-2"
           [disabled]="connStatus == 'connecting'"
           (click)="initialize()"
         >
-          {{ connStatus == "connecting" ? "Connecting..." : "Connect" }}
+          Connect
         </button>
         <button
           *ngIf="serialServ.serialSupport"

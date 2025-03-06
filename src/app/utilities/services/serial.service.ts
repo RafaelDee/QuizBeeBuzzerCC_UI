@@ -168,15 +168,15 @@ export class SerialService {
     });
   }
   async initializeSerial() {
-    //wait for the singleton check
+    //wait for the singleton checka
 
     const hasInstance = await this.checkInstances();
     this.isLeader.next(!hasInstance);
     if (hasInstance) {
       console.log('listening to master');
-
       return;
     }
+
     this.channel.postMessage({ type: 'leader-exists' });
     if (this.connectionStatus.value == 'connected')
       throw new SerialAlreadyConnected();
@@ -188,7 +188,7 @@ export class SerialService {
     try {
       await this.connectToDevice();
     } catch (err) {
-      this.connectionStatus.next('disconnected');
+      if (!this.headlessMode) this.connectionStatus.next('disconnected');
       throw err;
     }
   }
@@ -264,16 +264,19 @@ export class SerialService {
       ports?.map((p) => new SerialDevice(p))
     );
     try {
-      const testConnections = (
-        await Promise.all(serialDevices?.map((p) => this.testDevice(p)))
-      ).filter((f) => {
-        return f.status;
-      });
-      console.log(`successful devices: ${testConnections.length}`);
-      const validConncetion = testConnections.pop();
-      const hasConnection = validConncetion != null;
+      const firstSuccessfulConnection = await Promise.race(
+        serialDevices.map(async (device) => {
+          const result = await this.testDevice(device);
+          if (!result.status) {
+            // If status is false, throw an error to be caught by Promise.race
+            throw new Error('Connection failed');
+          }
+          return result;
+        })
+      );
+      const validConncetion = firstSuccessfulConnection;
 
-      if (!hasConnection) throw new NoValidConnections();
+      if (!firstSuccessfulConnection) throw new NoValidConnections();
       this.connectedSerialDevice = validConncetion.device;
       this.connectedSerialDevice.ondisconnect = () => {
         this.disconnect();
@@ -299,12 +302,13 @@ export class SerialService {
       });
       this.connectionStatus.next('connected');
     } catch (err) {
-      this.connectionStatus.next('disconnected');
+      if (!this.headlessMode) this.connectionStatus.next('disconnected');
       this.isLeader.next(null);
       this.sub?.unsubscribe();
       for (let device of serialDevices) {
         device.close();
       }
+      throw err;
     }
 
     /* const hasConnections = testConnections.filter((f) => f.status == true);
@@ -518,11 +522,17 @@ export class SerialService {
     }
   }
 }
-export class SerialAlreadyConnected extends Error {}
-export class SerialConnecting extends Error {}
-export class NoValidConnections extends Error {}
+export class SerialAlreadyConnected extends Error {
+  override message: string = 'Alreay Connected to Device';
+}
+export class SerialConnecting extends Error {
+  override message: string = 'Connecting to Device';
+}
+export class NoValidConnections extends Error {
+  override message: string = 'No Valid Connections Made';
+}
 export class NoValidDevices extends Error {
-  override message: string = 'No Valid Devices';
+  override message: string = 'No Devices Found';
 }
 /* const listener = this.listenToDevice(port);
 const command = await firstValueFrom(

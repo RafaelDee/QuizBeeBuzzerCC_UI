@@ -149,7 +149,11 @@ export class MainScreenComponent implements OnInit {
       { title: 'Disconnect', params: { color: 'danger', dismiss: true } },
       { title: 'No', params: { dismiss: true } }
     );
+    if(this.serialServ.headlessMode){
+      this.router.navigate(['/']);
+    }
     this.serialServ.disconnect(false);
+
   }
   pointsChange(index: number, value: number) {
     this.gameManager.pointsChange(index, value);

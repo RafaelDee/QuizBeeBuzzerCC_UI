@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { Router } from '@angular/router';
-import { SerialService } from '../utilities/services/serial.service';
+import { ConnectionStatus, SerialService } from '../utilities/services/serial.service';
 import { CommonModule } from '@angular/common';
 import { filter, first, firstValueFrom } from 'rxjs';
 import { ToastService } from '../utilities/services/toast/toast.service';
@@ -8,6 +8,7 @@ import { ToastService } from '../utilities/services/toast/toast.service';
  * detect browser WebSerial support
  *
  */
+
 @Component({
   selector: 'app-setup',
   imports: [CommonModule],
@@ -20,6 +21,7 @@ import { ToastService } from '../utilities/services/toast/toast.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SetupComponent {
+  connMsg:{[key in ConnectionStatus]:string} = {'connected':'Connected','connecting':'Connecting...','disconnected':'Disconnected','disconnected-no-recon':'Disconnected'}
   constructor(
     public serialServ: SerialService,
     private router: Router,

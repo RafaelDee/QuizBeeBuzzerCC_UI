@@ -14,7 +14,6 @@ import {
   PointsSystemReceiveCommands,
   PointsSystemSendCommands,
   PointsSystemSendCommandsType,
-  ScoringService,
 } from './scoring.service';
 import { SoundEffects, SoundFXService } from './soundFX.service';
 import { IndexedDbService } from './indexed-db.service';
@@ -108,6 +107,10 @@ export class GameManagerService {
     this.podiumInSpotlightIndex.subscribe((index) => {
       if (this.pointsConfig.autoSelect)
         this.pointsConfig.selectedPodiumIndex = index ?? null;
+      this.channel.postMessage({
+        command: 'spotlight',
+        payload: index,
+      });
     });
 
     this.podiums.subscribe((pod) => {
@@ -267,6 +270,7 @@ export class GameManagerService {
   } */
 
   spotLightPodium(index: number) {
+    this.sendRevealAns(null);
     this.podiumInSpotlightIndex.next(index);
     this.serial.write(SendCommands.SpotLightPodium, '' + index);
     this.setToAllPodiums({ ledState: LEDState.OFF }, { exclude: [index] });
@@ -275,25 +279,41 @@ export class GameManagerService {
       { include: [index] }
     );
   }
-
+  ansReveal = new BehaviorSubject<boolean>(null);
   resetGame() {
     this.setToAllPodiums({ ledState: LEDState.StandBy });
     this.serial.write(SendCommands.ResetGameState);
     this.buttonPlacing = [];
     this.podiumInSpotlightIndex.next(null);
+    this.sendRevealAns(null);
     this.soundFX.stopAudio();
+  }
+  sendRevealAns(value: boolean) {
+    this.ansReveal.next(value);
+    this.channel.postMessage({
+      command: 'ansReveal',
+      payload: value,
+    });
+  }
+  clearRevealAns() {
+    this.sendRevealAns(null);
   }
   readyGame() {
     this.setToAllPodiums({ ledState: LEDState.StandBy });
     this.serial.write(SendCommands.ReadyGameState);
     this.buttonPlacing = [];
     this.podiumInSpotlightIndex.next(null);
+
+    this.sendRevealAns(null);
     this.soundFX.stopAudio();
   }
   correctAns() {
+    this.sendRevealAns(null);
     this.setToAllPodiums({ ledState: LEDState.CorrectAnswer });
     this.serial.write(SendCommands.CorrectAnswer);
     this.soundFX.playAudio('correct');
+
+    this.sendRevealAns(true);
   }
   suspenseAns() {
     this.setToAllPodiums({ ledState: LEDState.SuspenseAnswer });
@@ -301,13 +321,17 @@ export class GameManagerService {
     this.soundFX.playAudio('suspense');
   }
   wrongAns() {
+    this.sendRevealAns(null);
     this.setToAllPodiums({ ledState: LEDState.WrongAnswer });
     this.serial.write(SendCommands.WrongAnswer);
 
     this.soundFX.playAudio('wrong');
+
+    this.sendRevealAns(false);
   }
 
   clearPodiumPoints() {
+    this.sendRevealAns(null);
     //this.setToAllPodiums({ scoring: { points: 0, streak: 0 } });
     //cannot use setToAllPodiums at it links all scoring, tried removing link, but failed
     const keys = Array.from(this.podiums.value.keys());
@@ -340,6 +364,7 @@ export class GameManagerService {
     allowNegatives: boolean,
     addPoints: boolean = true
   ) {
+    this.sendRevealAns(null);
     const scoring: {
       points: number;
       streak: number;
@@ -417,13 +442,18 @@ export class GameManagerService {
     this.podiums.next(this.podiums.value);
   }
   addPodiumHeadlessMode() {
-    this.setPodium(this.podiums.value.size, new Podium());
-    this.podiums.next(this.podiums.value)
+    this.podiums.value.clear();
+    if (this.podiums.value.size >= 5) return;
+    for (let index = 0; index < 5; index++) {
+      this.setPodium(index, new Podium(this.podiums.value.size + ''));
+    }
+
+    this.podiums.next(this.podiums.value);
   }
   setPodium(index: number, podium: Partial<Podium> = null) {
     if (podium == null) return;
     const pod = {
-      ...(this.podiums.value.get(index) ?? new Podium()),
+      ...(this.podiums.value.get(index) ?? new Podium(podium.macAddr)),
       ...podium,
     };
     this.podiums.value.set(index, pod);
@@ -441,9 +471,18 @@ export class GameManagerService {
         command: 'update',
       } as PointsSystemReceiveCommands);
   } */
-  clearPodium() {
+  clearMemory() {
     this.podiums.next(new Map());
     this.serial.write(SendCommands.ClearPodium);
+    this.indexedDb.clear();
+    localStorage.clear();
+    this.pointsConfig = {
+      autoSelect: true,
+      selectedPodiumIndex: null,
+      pointsPreset: [50, 100, 150, 200, 250, 300],
+      pointsInput: 0,
+      allowNegatives: true,
+    };
   }
   processCommand(command: Command<ReceiveCommands>) {
     switch (command.command) {
@@ -511,6 +550,16 @@ export class GameManagerService {
     const isCharging = +cmd[3] == 1;
     this.setPodium(index, { battLevel, battVoltage, isCharging });
     this.podiums.next(this.podiums.value);
+  }
+
+  onBtnPress(index: number) {
+    //making a bypass, not optimizing code
+    let highestNum = -1;
+    this.buttonPlacing.forEach((e) => {
+      if (e > highestNum) highestNum = e;
+    });
+    highestNum++;
+    this.podiumPlacement([index, highestNum].join(','));
   }
   podiumPlacement(payload: string) {
     const cmd = this.splitPayload(payload, 2);

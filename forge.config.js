@@ -8,12 +8,7 @@ const config = {
   packagerConfig: {
     asar: true,
     files: [
-      // Include your main Electron files
-      "main.js",
-      "preload.js",
-      "package.json",
-      // Only include the browser folder from your Angular build
-      "dist/buzzer-control-center/browser/**/*"
+      "dist/buzzer-control-center/browser"
     ],
   },
   rebuildConfig: {},

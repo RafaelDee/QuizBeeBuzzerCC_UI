@@ -1,4 +1,5 @@
 import {
+  AfterViewInit,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
@@ -30,6 +31,7 @@ import { BehaviorSubject, debounceTime, fromEvent, Subscription } from 'rxjs';
 import { ScrollingNumbersDirective } from '../../utilities/directives/scrolling-numbers.directive';
 import { ScrollingNumberComponent } from '../../templates/scrolling-number/scrolling-number.component';
 import { asyncDelay } from '../../utilities/common-utils';
+import { PodiumItemComponent } from '../../templates/podium-item/podium-item.component';
 
 declare global {
   interface Window {
@@ -49,8 +51,9 @@ declare global {
     AnimateDirective,
     ScrollingNumbersDirective,
     ScrollingNumberComponent,
+    PodiumItemComponent,
   ],
-  templateUrl: './second-screen.component.old.html',
+  templateUrl: './second-screen.component.html',
   styleUrls: ['./second-screen.component.scss'],
   animations: [
     trigger('fadeIn', [
@@ -61,10 +64,11 @@ declare global {
     ]),
   ],
 })
-export class SecondScreenComponent implements OnInit {
+export class SecondScreenComponent implements OnInit, AfterViewInit {
   @Input() previewMode: boolean = false;
   @ViewChildren(AnimateDirective) items: QueryList<AnimateDirective>;
   podiums: { key: number; value: Podium }[] = [];
+  podiumsTeam: Partial<Podium>[] = [];
   //podiumsCache: { key: number; value: Podium }[] = [];
   private resizeSubscription!: Subscription;
   constructor(public score: ScoringService, private cdr: ChangeDetectorRef) {
@@ -76,22 +80,33 @@ export class SecondScreenComponent implements OnInit {
       });
     this.score.onRefresh.asObservable().subscribe(() => this.reload());
   }
+  async ngAfterViewInit(): Promise<void> {
+    await asyncDelay(1000);
+    //this.podiumsSub.next(this.podiums);d
+  }
   closeWindow() {
     window.close();
   }
+  sub: Subscription;
   reload() {
-    if(this.previewMode)return;
-    location.reload();
+    if (this.previewMode) return;
+    this.setup();
   }
-  async ngOnInit(): Promise<void> {
-    this.score.init();
+  setup() {
+    this.podiums = [];
+    this.podiumsTeam = [];
     if (!this.previewMode)
       document.documentElement.removeAttribute('data-bs-theme');
-    this.score.podiums.subscribe((x) => {
+    if (this.sub) this.sub.unsubscribe();
+    this.sub = this.score.podiums.subscribe((x) => {
       if (!x) return;
       const test = Array.from(x.entries()) // Convert Map to an array
         .map(([key, value]) => {
           if (value) {
+            this.podiumsTeam[key] ||= {};
+            this.podiumsTeam[key].title = value.title;
+            this.podiumsTeam[key].photo = value.photo;
+            this.podiumsTeam[key].macAddr = value.macAddr;
             const podI = this.podiums.findIndex((x) => x.key == key);
             if (podI != -1) {
               this.podiums[podI].value ||= {} as any;
@@ -106,10 +121,17 @@ export class SecondScreenComponent implements OnInit {
       this.click(test);
     });
   }
+  async ngOnInit(): Promise<void> {
+    this.score.init();
+    this.setup();
+  }
   resizing = false;
   @HostListener('window:resize', ['$event'])
   sizeChange(event) {
     this.resizing = true;
+  }
+  minimize() {
+    window.Electron.ipcRenderer.send('maximize');
   }
   /* click() {
     this.podiums = this.podiums.sort(
@@ -123,11 +145,11 @@ export class SecondScreenComponent implements OnInit {
       value: Podium;
     }[]
   ) {
+    //debugger;
     if ((this.podiums?.length ?? 0) == 0) {
       this.podiums = asd;
       this.cdr.detectChanges();
     }
-    console.log(this.podiums);
     this.podiums = this.podiums
       .map((x) => {
         return {
@@ -138,16 +160,22 @@ export class SecondScreenComponent implements OnInit {
       .sort((a, b) => (b.score == a.score ? 0 : b.score - a.score))
       .map((x) => x.item);
 
-    this.cdr.detectChanges();
+    this.cdr.markForCheck();
     await asyncDelay(100);
     //this.podiumsSub.next(this.podiums);
-    this.items.forEach((x) => x.animateGo());
+    setTimeout(() => {
+      this.items.forEach((x) => x.animateGo());
+    }, 100);
   }
   fullscreen() {
     if (window.Electron) {
       window.Electron.ipcRenderer.send('maximize');
     } else {
-      document.documentElement.requestFullscreen();
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        document.documentElement.requestFullscreen();
+      }
     }
   }
   identify(index, item: Podium) {

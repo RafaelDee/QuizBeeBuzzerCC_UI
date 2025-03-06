@@ -9,18 +9,146 @@
 .text-shadow {
   text-shadow: 3px 1px 2px rgba(0, 0, 0, 0.77);
 }
+.team {
+  width: fit-content;
+  max-height: 100%;
+  flex-grow: 1;
+  height: 100%;
+}
 .scoreboard {
-  min-width: 20%;
-  max-width: 30%;
+  width: fit-content;
+  flex-grow: 10;
+  margin-right: 1.5em;
+  min-width: 25%;
+  max-width: 40%;
+  max-height: 100%;
+  overflow: hidden;
+  height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: space-evenly;
 }
-#title-bar {
-  &:hover {
-    opacity: 0.5;
+#title-bar:hover {
+  opacity: 0.5;
+}
+.ans-reaveal-window {
+  pointer-events: none;
+  z-index: 200;
+  transition: opacity 1s ease-in-out;
+  /* No default opacity here - we'll let Angular control it */
+}
+@keyframes multi-blink {
+  0% {
+    opacity: 0;
   }
+  20% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 0;
+  }
+  60% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes multi-blink-inv {
+  0% {
+    opacity: 1;
+  }
+  20% {
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 0;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.reset-blink {
+  animation: none;
+  transition: opacity 1s;
+}
+.correct-ans-window {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  background: rgb(44, 213, 58);
+  background: radial-gradient(
+    circle,
+    rgba(44, 213, 58, 0) 0%,
+    rgba(44, 213, 58, 0.20989912974683544) 67%,
+    rgba(44, 213, 58, 0.37129153481012656) 100%
+  );
+  .neon {
+    color: rgb(255, 255, 255);
+    text-shadow: rgb(255, 255, 255) 0px 0px 5px, rgb(255, 255, 255) 0px 0px 10px,
+      rgb(255, 255, 255) 0px 0px 15px, rgb(73, 255, 24) 0px 0px 20px,
+      rgb(73, 255, 24) 0px 0px 30px, rgb(73, 255, 24) 0px 0px 40px,
+      rgb(73, 255, 24) 0px 0px 55px, rgb(73, 255, 24) 0px 0px 75px;
+    --darkreader-inline-color: var(--darkreader-text-ffffff, #e8e6e3);
+    --darkreader-inline-bgimage: initial;
+    --darkreader-inline-bgcolor: var(--darkreader-background-232323, #1a1d1e);
+  }
+}
+.wrong-ans-window {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  background: rgb(255, 43, 43);
+  background: radial-gradient(
+    circle,
+    rgba(255, 43, 43, 0) 0%,
+    rgba(255, 43, 43, 0.20989912974683544) 67%,
+    rgba(255, 43, 43, 0.37129153481012656) 100%
+  );
+  .neon {
+    color: rgb(255, 255, 255);
+    text-shadow: rgb(255, 255, 255) 0px 0px 5px, rgb(255, 255, 255) 0px 0px 10px,
+      rgb(255, 255, 255) 0px 0px 15px, rgb(255, 43, 43) 0px 0px 20px,
+      rgb(255, 43, 43) 0px 0px 30px, rgb(255, 43, 43) 0px 0px 40px,
+      rgb(255, 43, 43) 0px 0px 55px, rgb(255, 43, 43) 0px 0px 75px;
+
+    // Removed the DarkReader variables as they're not necessary
+    // unless you specifically need them for a dark mode extension
+  }
+}
+
+.blinking-element {
+  animation: multi-blink 0.5s ease-in-out forwards;
+
+  // If you want the animation to run only once instead of infinitely:
+  // animation: blink 1s ease-in-out forwards;
+}
+
+.prevent-select {
+  -webkit-user-select: none; /* Safari */
+  -ms-user-select: none; /* IE 10 and IE 11 */
+  user-select: none; /* Standard syntax */
+}
+.team-item:not([style*="visibility: hidden"]) {
+  /* width: initial !important; */
+  transition: width 1s ease-in-out, font-size 5s ease-in-out;
+}
+#title-bar {
   pointer-events: all;
+  user-select: none;
   -webkit-app-region: drag;
   height: 31px;
   opacity: 0;
@@ -30,12 +158,14 @@
   top: 0px;
   left: 0px;
   right: 0px;
-  z-index: 100;
+  z-index: 1000;
   background-color: var(--bs-body-bg);
   transition: opacity 0.5s;
 }
+
 .main-window {
   transition: opacity 1s;
+  display: flex;
 }
 #title {
   position: fixed;
