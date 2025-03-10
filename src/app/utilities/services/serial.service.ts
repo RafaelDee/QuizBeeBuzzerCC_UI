@@ -46,6 +46,7 @@ export enum SendCommands {
   PodiumColor,
   ClearPodium,
   VerboseMode,
+  SendDeviceInfo
 }
 export enum ReceiveCommands {
   Acknowledge,
@@ -59,6 +60,7 @@ export enum ReceiveCommands {
   GameState,
   SpotLightPodium,
   PodiumBrightness,
+  DeviceInfo,
 }
 function charToCommand<T>(char: string, enumType: any): T | null {
   // Check if the character matches any value in the enum
@@ -241,9 +243,8 @@ export class SerialService {
   } */
 
   async disconnect(recon: boolean = true) {
-    if (!this.headlessMode) {
-      await this.connectedSerialDevice.close();
-    }
+    this.headlessMode = false;
+    await this.connectedSerialDevice.close();
     //use different listener, prob use connectedSerialDevice
     this.connectionStatus.next(
       recon ? 'disconnected' : 'disconnected-no-recon'

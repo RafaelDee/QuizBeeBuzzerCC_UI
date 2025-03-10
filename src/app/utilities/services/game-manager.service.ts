@@ -82,14 +82,21 @@ export class GameManagerService {
   podiums: BehaviorSubject<Map<number, Podium>> = new BehaviorSubject(
     new Map()
   );
-  curentGameState: GameState = GameState.Idle;
+  curentGameState = new BehaviorSubject<GameState>(GameState.Idle);
   podiumInSpotlightIndex = new BehaviorSubject<number>(null);
   podiumInSpotlight = new BehaviorSubject<Podium>(null);
   buttonPlacing: number[] = [];
   brightnessBtn = 255;
   brightnessFce = 255;
-
-  private isEdit = false;
+  firmwareVersion = 'Unknown';
+  logoMode = false;
+  private _isEdit = false;
+  public get isEdit() {
+    return this._isEdit;
+  }
+  private set isEdit(value) {
+    this._isEdit = value;
+  }
   summarizing = false;
   constructor(
     private serial: SerialService,
@@ -148,6 +155,12 @@ export class GameManagerService {
             command: 'editor',
             payload: this.isEdit,
           });
+          if (this.podiumInSpotlightIndex.value != null) {
+            this.channel.postMessage({
+              command: 'spotlight',
+              payload: this.podiumInSpotlightIndex.value,
+            });
+          }
           this.summarizing = false;
           break;
       }
@@ -167,8 +180,17 @@ export class GameManagerService {
     );
     this.pointsConfig.pointsInput = null;
   }
+  setLogoMode(value: boolean) {
+    if (!value && this.isEdit) return;
+    this.logoMode = value;
+    this.channel.postMessage({
+      command: 'editor',
+      payload: this.isEdit || this.logoMode,
+    });
+  }
   editorMode(value: boolean) {
     this.isEdit = value;
+    this.logoMode = value;
     this.channel.postMessage({
       command: 'editor',
       payload: this.isEdit,
@@ -183,9 +205,10 @@ export class GameManagerService {
     );
   }
 
-  refresh() {
+  refresh(previewMode: boolean = false) {
     this.channel.postMessage({
       command: 'refresh',
+      payload: previewMode,
     } as PointsSystemReceiveCommands);
   }
   forceSync() {
@@ -417,6 +440,9 @@ export class GameManagerService {
     );
   }
 
+  sendDeviceInfo() {
+    this.serial.write(SendCommands.SendDeviceInfo);
+  }
   private setToAllPodiums(
     podium: Partial<Podium>,
     options: { include?: number[]; exclude?: number[] } = {}
@@ -484,6 +510,10 @@ export class GameManagerService {
       allowNegatives: true,
     };
   }
+  setVersion(cmdP: string) {
+    const payload = this.splitPayload(cmdP, 1);
+    this.firmwareVersion = payload[0] ?? 'Unknown';
+  }
   processCommand(command: Command<ReceiveCommands>) {
     switch (command.command) {
       case ReceiveCommands.Dnr:
@@ -501,6 +531,9 @@ export class GameManagerService {
         return;
       case ReceiveCommands.BattStat:
         this.battStat(command.payload);
+        return;
+      case ReceiveCommands.DeviceInfo:
+        this.setVersion(command.payload);
         return;
       case ReceiveCommands.GameState:
         if (this.summaryMode) {
@@ -540,7 +573,7 @@ export class GameManagerService {
     const cmd = this.splitPayload(payload, 1);
     const state = Number.parseInt(cmd[0]) ?? null;
     if (state == null || isNaN(state)) return;
-    this.curentGameState = state;
+    this.curentGameState.next(state);
   }
   battStat(payload: string) {
     const cmd = this.splitPayload(payload, 4);

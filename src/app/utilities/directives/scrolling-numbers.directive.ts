@@ -27,6 +27,7 @@ export class ScrollingNumbersDirective implements OnInit {
     else this.needUpdate = true;
   }
   async scrollNumber(digits) {
+    const fontSize = this.getCssVariable('--scroll-font-size-w');
     this.el.nativeElement
       .querySelectorAll('span[data-value]')
       .forEach((tick, i) => {
@@ -35,7 +36,7 @@ export class ScrollingNumbersDirective implements OnInit {
         }%)`;
       });
     setTimeout(() => {
-      this.el.nativeElement['style'].width = `${digits.length * 38}px`;
+      this.el.nativeElement['style'].width = `calc(${digits.length}*${fontSize})`;
     }, 100);
   }
 
@@ -59,8 +60,11 @@ export class ScrollingNumbersDirective implements OnInit {
       },
       fresh ? 0 : 1
     );
-  }
 
+  }
+  getCssVariable(variable: string): string {
+    return getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
+  }
   removeDigit() {
     const firstDigit = this.el.nativeElement.lastElementChild;
 
@@ -86,9 +90,8 @@ export class ScrollingNumbersDirective implements OnInit {
       this.addDigit('0', true);
     }
 
-    this.scrollNumber(this.value);
 
-    setTimeout(() => this.scrollNumber(digits), 2000);
+    setTimeout(() => this.scrollNumber(digits), 1);
     this.currNum = this.value;
   }
 

@@ -16,7 +16,7 @@ export const routes: CustomRoutes = [
     canActivate: [SerialConnectionGuard],
     data: {
       navItem: {
-        name: 'Control Center'
+        name: 'Control Center',
       },
     },
   },
@@ -46,7 +46,12 @@ export const routes: CustomRoutes = [
       },
     },
   },
-  {path:'about',component:AboutComponent,data:{navItem:{name:'About'}}},
+  {
+    path: 'about',
+    component: AboutComponent,
+    data: { navItem: { name: 'About' } },
+    canActivate: [SerialConnectionGuard],
+  },
   { path: '404', component: NotFoundComponent, title: '404!' },
   { path: '**', redirectTo: '404' },
 ];

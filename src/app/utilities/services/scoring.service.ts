@@ -48,7 +48,7 @@ export class ScoringService {
     imgBkgColor: '#000000',
   });
   private _isLeader = new BehaviorSubject<boolean>(null);
-  onRefresh = new EventEmitter(null);
+  onRefresh = new EventEmitter<boolean>(null);
   public get isLeader() {
     return this._isLeader;
   }
@@ -59,7 +59,7 @@ export class ScoringService {
   channelSend: BroadcastChannel;
   podiums = new BehaviorSubject<Map<number, Podium>>(new Map());
   selectedPodium = new BehaviorSubject<number>(null);
-  editMode = new BehaviorSubject<boolean>(false);
+  logoMode = new BehaviorSubject<boolean>(false);
   onAnsReveal = new BehaviorSubject<boolean>(null);
   constructor(
     private indexedDb: IndexedDbService,
@@ -93,7 +93,7 @@ export class ScoringService {
           this.selectedPodium.next(payload);
           break;
         case 'refresh':
-          this.onRefresh.emit(null);
+          this.onRefresh.emit(payload);
           break;
         case 'ansReveal':
           this.onAnsReveal.next(payload);
@@ -105,7 +105,7 @@ export class ScoringService {
           });
           break;
         case 'editor':
-          this.editMode.next(payload ?? false);
+          this.logoMode.next(payload ?? false);
           break;
       }
     };

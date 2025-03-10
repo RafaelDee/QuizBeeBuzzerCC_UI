@@ -1,8 +1,11 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { Router } from '@angular/router';
-import { ConnectionStatus, SerialService } from '../utilities/services/serial.service';
+import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import {
+  ConnectionStatus,
+  SerialService,
+} from '../utilities/services/serial.service';
 import { CommonModule } from '@angular/common';
-import { filter, first, firstValueFrom } from 'rxjs';
+import { filter, first, firstValueFrom, tap } from 'rxjs';
 import { ToastService } from '../utilities/services/toast/toast.service';
 /**TODO:
  * detect browser WebSerial support
@@ -20,21 +23,32 @@ import { ToastService } from '../utilities/services/toast/toast.service';
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class SetupComponent {
-  connMsg:{[key in ConnectionStatus]:string} = {'connected':'Connected','connecting':'Connecting...','disconnected':'Disconnected','disconnected-no-recon':'Disconnected'}
+export class SetupComponent implements OnInit {
+  connMsg: { [key in ConnectionStatus]: string } = {
+    connected: 'Connected',
+    connecting: 'Connecting...',
+    disconnected: 'Disconnected',
+    'disconnected-no-recon': 'Disconnected',
+  };
   constructor(
     public serialServ: SerialService,
     private router: Router,
+    private route: ActivatedRoute,
     private toast: ToastService
-  ) {
-    this.initialize(true);
+  ) {}
+  ngOnInit(): void {
     this.waitForConnection();
+    this.initialize(true);
   }
   async waitForConnection() {
     await firstValueFrom(
-      this.serialServ.connectionStatus.pipe(first((f) => f == 'connected'))
+      this.serialServ.connectionStatus.pipe(
+        tap((test) => console.log(test)),
+        filter((status) => status === 'connected'),
+        first()
+      )
     );
-    this.router.navigate(['main']);
+    this.router.navigate([this.route.snapshot.queryParams?.['from'] ?? 'main']);
   }
   async initialize(auto: boolean = false) {
     if (

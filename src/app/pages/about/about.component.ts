@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { NavBarComponent } from "../../templates/nav-bar/nav-bar.component";
+import { environment } from '../../../environment/environment.prod';
+import { GameManagerService } from '../../utilities/services/game-manager.service';
 
 @Component({
   selector: 'app-about',
@@ -13,4 +15,9 @@ import { NavBarComponent } from "../../templates/nav-bar/nav-bar.component";
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AboutComponent { }
+export class AboutComponent {
+  version = environment.version;
+  constructor(public gameManager:GameManagerService){
+    gameManager.sendDeviceInfo();
+  }
+}

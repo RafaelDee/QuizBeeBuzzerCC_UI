@@ -1,10 +1,13 @@
 <nav-bar></nav-bar>
 <div class="container mt-4 pb-5">
-  <h3>Settings</h3>
+  <h2>Settings</h2>
   <div class="mb-3">
     <div class="d-flex align-items-center w-100 mb-2">
       <h4 class="mb-0 me-3 white-space-nowrap">Second Screen</h4>
       <hr class="flex-grow-1" />
+    </div>
+    <div class="alert alert-info" role="alert">
+      Showing the Logo at the Second screen when on the settings page
     </div>
     <div>
       <div style="height: 30%; max-height: 30%; position: relative">
@@ -25,70 +28,100 @@
             <i class="fa-solid fa-trash"></i>
           </button>
         </div>
-        <app-second-screen
-          [previewMode]="true"
-          class="mb-3"
-          style="
-            height: 30%;
-            max-height: 30%;
-            border: var(--bs-body-color) 2px solid;
-          "
-        ></app-second-screen>
-      </div>
-      <div class="row g-2">
-        <div class="col-4">
-          <label for="exampleInputEmail1" class="form-label">Text Color</label>
-          <input
-            type="color"
-            class="form-control"
-            [ngModel]="settingsServ?.settings?.secondScrTxtColor"
-            (ngModelChange)="
-              settingsServ.sendSettingsConfig({ secondScrTxtColor: $event })
-            "
-            (change)="
-              settingsServ.setSettings({
-                secondScrTxtColor: $event.target['value']
-              })
-            "
-          />
-        </div>
-        <div class="col-4">
-          <label for="exampleInputEmail1" class="form-label"
-            >Image Border Color</label
+        <div class="position-absolute bottom-0 left-0" style="z-index: 10">
+          <button
+            (click)="gameManager.refresh(true)"
+            class="btn btn-sm btn-danger me-2"
           >
-          <input
-            type="color"
-            class="form-control"
-            [ngModel]="settingsServ?.settings?.imgBorderColor"
-            (ngModelChange)="
-              settingsServ.sendSettingsConfig({ imgBorderColor: $event })
+            <i class="fa-solid fa-arrows-rotate"></i> Sync Pts.
+          </button>
+        </div>
+        <!-- <iframe src="./sec_scr" style="
+        min-height: 50vh;
+        height: 50vh;
+        max-height: 50vh;
+        border: var(--bs-body-color) 2px solid;
+      "></iframe> -->
+        <div class="second-screen-container" style="
+          min-height: 50vh;
+          height: 50vh;
+          max-height: 50vh;
+          border: var(--bs-body-color) 2px solid;
+          overflow: hidden;
+          background-color: var(--bs-body-bg);
+          position: relative;
+        ">
+          <app-second-screen
+            [previewMode]="true"
+            class="mb-3"
+            style="
+              height: 100%;
+              width: 100%;
+              position: absolute;
+              top: 0;
+              left: 0;
             "
-            (change)="
-              settingsServ.setSettings({
-                imgBorderColor: $event.target['value']
-              })
-            "
-          />
+          ></app-second-screen>
+        </div>
+      </div>
+      <div class="row g-4">
+        <div class="col-12 col-md-6">
+          <div>
+            <label for="exampleInputEmail1" class="form-label"
+              >Text Color</label
+            >
+            <input
+              type="color"
+              class="form-control"
+              [ngModel]="settingsServ?.settings?.secondScrTxtColor"
+              (ngModelChange)="
+                settingsServ.sendSettingsConfig({ secondScrTxtColor: $event })
+              "
+              (change)="
+                settingsServ.setSettings({
+                  secondScrTxtColor: $event.target['value']
+                })
+              "
+            />
+          </div>
+          <div>
+            <label for="exampleInputEmail1" class="form-label"
+              >Image Border Color</label
+            >
+            <input
+              type="color"
+              class="form-control"
+              [ngModel]="settingsServ?.settings?.imgBorderColor"
+              (ngModelChange)="
+                settingsServ.sendSettingsConfig({ imgBorderColor: $event })
+              "
+              (change)="
+                settingsServ.setSettings({
+                  imgBorderColor: $event.target['value']
+                })
+              "
+            />
+          </div>
+          <div>
+            <label for="exampleInputEmail1" class="form-label"
+              >Image Background Color</label
+            >
+            <input
+              type="color"
+              class="form-control"
+              [ngModel]="settingsServ?.settings?.imgBkgColor"
+              (ngModelChange)="
+                settingsServ.sendSettingsConfig({ imgBkgColor: $event })
+              "
+              (change)="
+                settingsServ.setSettings({
+                  imgBkgColor: $event.target['value']
+                })
+              "
+            />
+          </div>
         </div>
 
-        <div class="col-4">
-          <label for="exampleInputEmail1" class="form-label"
-            >Image Background Color</label
-          >
-          <input
-            type="color"
-            class="form-control"
-            [ngModel]="settingsServ?.settings?.imgBkgColor"
-            (ngModelChange)="
-              settingsServ.sendSettingsConfig({ imgBkgColor: $event })
-            "
-            (change)="
-              settingsServ.setSettings({
-                imgBkgColor: $event.target['value']
-              })
-            "
-          />
-        </div>
         <!-- <div class="col-4">
           <label for="exampleInputEmail1" class="form-label"
             >Preparing Text</label
@@ -107,7 +140,7 @@
             "
           />
         </div> -->
-        <div>
+        <div class="col-12 col-lg-6">
           <label for="exampleInputEmail1" class="form-label"
             >Preparing Image</label
           >
@@ -268,11 +301,6 @@
       <h4 class="mb-0 me-3 white-space-nowrap">Maintenance</h4>
       <hr class="flex-grow-1" />
     </div>
-    <button
-      class="btn btn-danger"
-      (click)="clearMemory()"
-    >
-      Clear Memory
-    </button>
+    <button class="btn btn-danger" (click)="clearMemory()">Clear Memory</button>
   </div>
 </div>

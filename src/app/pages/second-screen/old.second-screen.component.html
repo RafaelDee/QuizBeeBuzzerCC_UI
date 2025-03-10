@@ -29,7 +29,7 @@
   txtFormat?.secondScrTxtColor??'#FFFFFF'};
   <div
     class="main-window text-white position-absolute top-0 start-0 bottom-0 end-0 d-flex flex-column justify-content-center align-items-center"
-    [ngStyle]="{ opacity: (!previewMode && score.editMode | async) ? 1 : 0 }"
+    [ngStyle]="{ opacity: (!previewMode && score.logoMode | async) ? 1 : 0 }"
   >
     @let prepImg = score.prepImg|async;
     <img
@@ -54,7 +54,7 @@
 
   <div
     class="main-window row g-2 py-5 px-3 m-0 rol-cols-5 h-100 position-relative"
-    [ngStyle]="{ opacity: (!previewMode && score.editMode | async) ? 0 : 1 }"
+    [ngStyle]="{ opacity: (!previewMode && score.logoMode | async) ? 0 : 1 }"
   >
     <ng-container
       *ngFor="let item of podiums; let i = index; identifyBy: identify"

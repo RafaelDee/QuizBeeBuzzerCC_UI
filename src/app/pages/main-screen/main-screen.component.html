@@ -1,7 +1,8 @@
 <nav-bar></nav-bar>
 <div class="d-flex flex-column fullscreen bg-body-secondary">
   <div class="container-xl pt-3 mb-2 d-flex flex-column" style="flex-grow: 5">
-    @let podiumInSpotlightIndex = gameManager.podiumInSpotlightIndex|async;
+    @let podiumInSpotlightIndex = gameManager.podiumInSpotlightIndex|async; @let
+    curentGameState = (gameManager.curentGameState|async);
     <div class="mb-2">
       <div
         class="bg-body py-2 px-3 d-flex justify-content-between align-items-center rounded-2"
@@ -9,7 +10,7 @@
         <div>
           <label>Status</label>
           <h3 class="mb-0" style="margin-top: -5px">
-            {{ gameStateTitles[gameManager.curentGameState] ?? "Unknown" }}
+            {{ gameStateTitles[curentGameState] ?? "Unknown" }}
           </h3>
         </div>
         <div *ngIf="podiumInSpotlightIndex != null" class="text-center">
@@ -53,9 +54,8 @@
       class="row row-cols-lg-5 d-flex g-3 cdk-list align-content-center"
       style="flex-grow: 1"
     >
-      @let disableSpotlight = !disableSafteyReveal &&
-      (gameManager.curentGameState == GameState.SuspenseAns ||
-      gameManager.curentGameState == GameState.QuizReady);
+      @let disableSpotlight = !disableSafteyReveal && (curentGameState ==
+      GameState.SuspenseAns || curentGameState == GameState.QuizReady);
       <div
         *ngFor="
           let item of gameManager.podiums | async | keyvalue;
@@ -89,21 +89,41 @@
   </div>
   <div class="d-flex flex-column" style="min-height: 100%; flex-grow: 1">
     <div class="d-flex justify-content-between">
-      <div style="width: 25%"></div>
-      <div class="d-flex justify-content-center align-content-bottom" style="width: 50%;">
+      <div class="d-flex justify-content-center align-content-start"
+      style="width: 50%" style="width: 25%">
         <div
           [ngClass]="{
-            'quiz-ready': gameManager.curentGameState === GameState.QuizReady,
-            'quiz-hidden': gameManager.curentGameState !== GameState.QuizReady
+            'quiz-ready': gameManager.logoMode,
+            'quiz-hidden': !gameManager.logoMode
+          }"
+          class="armed-container bg-info rounded-top-3 px-3 pt-2"
+        >
+          <h5 class="mb-0">Logo Shown</h5>
+        </div>
+      </div>
+      <div
+        class="d-flex justify-content-center align-content-bottom"
+        style="width: 50%"
+      >
+        <div
+          [ngClass]="{
+            'quiz-ready': curentGameState === GameState.QuizReady,
+            'quiz-hidden': curentGameState !== GameState.QuizReady
           }"
           class="armed-container bg-danger rounded-top-3 px-5 py-1"
         >
-          <h3 class="mb-0" style="letter-spacing: 0.2rem; font-family: monospace; font-weight: bolder;">
+          <h3
+            class="mb-0"
+            style="
+              letter-spacing: 0.2rem;
+              font-family: monospace;
+              font-weight: bolder;
+            "
+          >
             ARMED
           </h3>
         </div>
       </div>
-
 
       <div
         style="width: 25%"
@@ -117,7 +137,10 @@
         </button>
       </div>
     </div>
-    <div class="control-center bg-body" style="min-height: 100%; flex-grow: 1;z-index: 2;">
+    <div
+      class="control-center bg-body"
+      style="min-height: 100%; flex-grow: 1; z-index: 2"
+    >
       <div class="container-xl pt-3 px-3">
         <div class="row g-3">
           <div class="col-md-4">
@@ -169,6 +192,13 @@
                 >
                   Pause Audio <i class="fa-solid fa-pause"></i>
                 </button> -->
+                <button
+                  class="btn btn-primary"
+                  [disabled]="gameManager.isEdit"
+                  (click)="gameManager.setLogoMode(!gameManager.logoMode)"
+                >
+                  {{ gameManager.logoMode ? "Un-" : "" }}Fly Logo
+                </button>
                 <button
                   class="btn btn-primary"
                   [disabled]="sfx.currentPlayingAudio == null"
@@ -224,16 +254,15 @@
           <hr class="d-block d-md-none" />
           <div class="col-md-4">
             <div class="row g-3">
-              @let disableAnswers = !disableSafteyReveal &&
-              (gameManager.curentGameState == GameState.QuizReady); @let
-              disabledRevealAnswer = !disableSafteyReveal &&(
-              (gameManager.curentGameState == GameState.QuizReady)||
-              podiumInSpotlightIndex == null );
+              @let disableAnswers = !disableSafteyReveal && (curentGameState ==
+              GameState.QuizReady); @let disabledRevealAnswer =
+              !disableSafteyReveal &&( (curentGameState ==
+              GameState.QuizReady)|| podiumInSpotlightIndex == null );
               <div class="col-6">
                 <button
                   [disabled]="
                     disabledRevealAnswer &&
-                    gameManager.curentGameState != GameState.CorrectAns
+                    curentGameState != GameState.CorrectAns
                   "
                   class="btn btn-success w-100"
                   (click)="gameManager.correctAns(); alertDimmedPodium()"
@@ -245,7 +274,7 @@
                 <button
                   [disabled]="
                     disabledRevealAnswer &&
-                    gameManager.curentGameState != GameState.WrongAns
+                    curentGameState != GameState.WrongAns
                   "
                   class="btn btn-danger w-100"
                   (click)="gameManager.wrongAns(); alertDimmedPodium()"
@@ -292,7 +321,7 @@
           </div>
           <hr class="d-block d-md-none" />
           @let pointsConfig = gameManager.pointsConfig; @let btnPointsDisabled =
-          gameManager.curentGameState == GameState.QuizReady ||
+          curentGameState == GameState.QuizReady ||
           pointsConfig.selectedPodiumIndex == null ||
           pointsConfig.selectedPodiumIndex == 'null';
           <div class="col-md-4">

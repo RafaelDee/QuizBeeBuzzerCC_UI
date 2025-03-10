@@ -69,6 +69,7 @@ export class SecondScreenComponent implements OnInit, AfterViewInit {
   @ViewChildren(AnimateDirective) items: QueryList<AnimateDirective>;
   podiums: { key: number; value: Podium }[] = [];
   podiumsTeam: Partial<Podium>[] = [];
+  sub: Subscription;
   //podiumsCache: { key: number; value: Podium }[] = [];
   private resizeSubscription!: Subscription;
   constructor(public score: ScoringService, private cdr: ChangeDetectorRef) {
@@ -78,7 +79,11 @@ export class SecondScreenComponent implements OnInit, AfterViewInit {
         this.items.forEach((x) => x.animateGo());
         this.resizing = false;
       });
-    this.score.onRefresh.asObservable().subscribe(() => this.reload());
+    this.score.onRefresh.asObservable().subscribe((prevMode) => {
+      if ((this.previewMode ?? false) == prevMode) {
+        this.reload();
+      }
+    });
   }
   async ngAfterViewInit(): Promise<void> {
     await asyncDelay(1000);
@@ -87,9 +92,7 @@ export class SecondScreenComponent implements OnInit, AfterViewInit {
   closeWindow() {
     window.close();
   }
-  sub: Subscription;
   reload() {
-    if (this.previewMode) return;
     this.setup();
   }
   setup() {

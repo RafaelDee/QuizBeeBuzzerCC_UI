@@ -26,7 +26,7 @@
     overflow: hidden;
   "
 >
-  @let showWindow = (!previewMode && score.editMode | async);
+  @let showWindow = (!previewMode && score.logoMode | async);
 
   <div class="p-3 p-md-4 p-lg-5 h-100">
     @let txtFormat = score?.textFormat | async; @let txtFormatStyle = { 'color':
@@ -60,41 +60,40 @@
     <div
       class="main-window h-100"
       [ngStyle]="{
-        opacity: (!previewMode && score.editMode | async) ? 0 : 1,
+        opacity: (!previewMode && score.logoMode | async) ? 0 : 1,
         color: txtFormat.secondScrTxtColor
       }"
     >
       <div class="scoreboard position-relative">
         <ng-container
           *ngFor="let item of podiums; let i = index; identifyBy: identify"
-        >
-          <div
-            *animate="'1000ms ease-in-out'"
-            class="d-flex justify-content-between align-items-center pod-item w-100"
+          ><!--   -->
+          <div *animate="'1000ms ease-in-out'"
+            class="scoreboard-item d-flex justify-content-between align-items-center pod-item w-100"
           >
             <h1
-              style="font-size: 3rem"
-              class="text-clamp-1 m-0 text-shadow pe-3"
+              class="text-clamp-2 m-0 text-shadow pe-3 w-100"
               [ngStyle]="txtFormatStyle"
             >
-              {{ item.value.title?.trim() ?? "PODIUM " + (item.key + 1) }}
+              {{ item.value.title ?? "PODIUM " + (item.key + 1) }}
             </h1>
             @let points =item.value.scoring?.points ;
-            <div class="text-center d-flex flex-column" style="min-width: 150px">
+            <div
+              style="flex-grow: 1"
+              class="text-center d-flex flex-column align-items-center number-scroller-container"
+            >
               <h2
-                class="mb-0 text-shadow text-center"
+                class="mb-0 text-shadow text-center scroll-header"
                 [ngStyle]="txtFormatStyle"
                 style="justify-content: center"
               >
-                <span style="font-size: 4rem;"
+                <span
                   id="number"
                   ScrollingNumbers
                   [value]="'' + (points ?? 0)"
                 ></span>
               </h2>
-              <label
-                class="text-shadow"
-                [ngStyle]="txtFormatStyle"
+              <label class="text-shadow" [ngStyle]="txtFormatStyle"
                 >Points</label
               >
             </div>
@@ -121,26 +120,26 @@
                 ? 'col-12 order-first'
                 : 'col-2'
             "
-            style="max-height: 45vh"
             [ngStyle]="{
               'z-index': spotlight === i ? 100 : 'auto',
-              'max-height': container.clientHeight / 2 + 'px'
+              'max-height':
+                container.clientHeight /
+                  (spotlight === i || spotlight === null ? 2 : 3) +
+                'px'
             }"
           >
             <div
-              class="d-flex flex-column align-items-center p-3 h-100 justify-content-center"
+              class="d-flex flex-column align-items-center h-100 justify-content-center"
               [ngStyle]="{
-                'max-height': container.clientHeight / 2 + 'px'
+                'max-height':
+                  container.clientHeight /
+                    (spotlight === i || spotlight === null ? 2 : 3) +
+                  'px'
               }"
             >
               <div
-                class="h-100 mb-2"
-                style="
-                  aspect-ratio: 1 / 1;
-                  max-width: 100%;
-                  padding: 20px;
-                  min-height: 100%;
-                "
+                class="h-100 mb-2 p-2"
+                style="aspect-ratio: 16/10; max-width: 100%; min-height: 100%"
               >
                 <img
                   class="rounded-2"
@@ -153,7 +152,7 @@
                     max-width: 100%;
                     height: 100%;
                     min-height: 100%;
-                    aspect-ratio: 1 / 1;
+                    aspect-ratio: 16/10;
                     object-fit: cover;
                     object-position: center;
                     box-shadow: 0 0 0 10px var(--boder-color);
@@ -194,7 +193,7 @@
                       spotlight == null
                         ? null
                         : spotlight == i
-                        ? '3rem'
+                        ? '4rem'
                         : '1.5rem',
                     color: txtFormatStyle.color
                   }"
@@ -220,7 +219,7 @@
         [src]="prepImg"
         style="max-width: 30vw; max-height: 30vh"
       />
-      <h1 [ngStyle]="txtFormatStyle">Preparing</h1>
+      <!-- <h1 [ngStyle]="txtFormatStyle">Preparing</h1>
       <div
         class="snippet"
         data-title="dot-pulse"
@@ -231,7 +230,7 @@
         <div class="stage">
           <div class="dot-pulse"></div>
         </div>
-      </div>
+      </div> -->
     </div>
   </div>
 </div>

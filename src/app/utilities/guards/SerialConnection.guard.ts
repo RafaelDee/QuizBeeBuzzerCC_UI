@@ -20,9 +20,13 @@ export class SerialConnectionGuard implements CanActivate {
     return this.serialServ.connectionStatus.pipe(
       filter((f) => f != 'connecting'),
       map((status) => {
-        const isConnected = status=='connected';
+        const isConnected = status == 'connected';
         console.log(isConnected);
-        if (!isConnected) this.router.navigate(['/'], { replaceUrl: true }); // Redirect if not connected
+        if (!isConnected)
+          this.router.navigate(['/'], {
+            replaceUrl: true,
+            queryParams: { from: state.url },
+          }); // Redirect if not connected
         return isConnected;
       })
     );
