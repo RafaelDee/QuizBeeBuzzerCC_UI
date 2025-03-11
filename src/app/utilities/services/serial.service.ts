@@ -46,7 +46,7 @@ export enum SendCommands {
   PodiumColor,
   ClearPodium,
   VerboseMode,
-  SendDeviceInfo
+  SendDeviceInfo,
 }
 export enum ReceiveCommands {
   Acknowledge,
@@ -244,7 +244,10 @@ export class SerialService {
 
   async disconnect(recon: boolean = true) {
     this.headlessMode = false;
-    await this.connectedSerialDevice.close();
+    try {
+      await this.connectedSerialDevice?.close();
+    } finally {
+    }
     //use different listener, prob use connectedSerialDevice
     this.connectionStatus.next(
       recon ? 'disconnected' : 'disconnected-no-recon'

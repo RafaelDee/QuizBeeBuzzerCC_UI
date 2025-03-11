@@ -71,7 +71,6 @@ export class SoundFXService {
       this.audioEffects[this.currentPlayingAudio].audio.pause();
       this.audioEffects[this.currentPlayingAudio].audio.currentTime = 0;
     }
-    this.audioEffects[key].audio.currentTime = 0;
     this.audioEffects[key].play(this.masterVolume);
     this.currentPlayingAudio = key;
   }

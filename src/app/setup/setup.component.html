@@ -24,7 +24,7 @@
           Connect
         </button>
         <button
-          *ngIf="serialServ.serialSupport"
+          *ngIf="serialServ.serialSupport |async"
           class="btn btn-primary me-2"
           (click)="serialServ.requestPort()"
         >

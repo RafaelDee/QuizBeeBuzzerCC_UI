@@ -259,6 +259,7 @@ export class GameManagerService {
         this.podiums.value.set(i, this.podiums.value.get(i + 1));
       }
     }
+    this.podiums.value.set(targetIndex,currentPodium);
     this.podiums.next(this.podiums.value);
     /*
     const podiumAData = this.podiums.get(podiumA);

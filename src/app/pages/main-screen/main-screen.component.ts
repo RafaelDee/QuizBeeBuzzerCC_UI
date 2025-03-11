@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { BrowserSerial } from 'browser-serial';
 import { CommonModule } from '@angular/common';
@@ -69,7 +69,7 @@ export class MainScreenComponent implements OnInit {
     public serialServ: SerialService,
     public gameManager: GameManagerService,
     public sfx: SoundFXService,
-    private modal: ModalService,
+    private modal: ModalService,cdr:ChangeDetectorRef,
     private toast: ToastService,private router:Router
   ) {}
   ngOnInit(): void {
@@ -84,6 +84,7 @@ export class MainScreenComponent implements OnInit {
       }
     });
     this.gameManager.editorMode(false);
+    (()=>{})();
   }
 
   setBrightness(event: Event) {
