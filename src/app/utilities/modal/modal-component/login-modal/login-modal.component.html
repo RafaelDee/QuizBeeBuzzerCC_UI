@@ -1,7 +1,11 @@
 <div class="modal-body d-flex flex-column">
   <form>
     <h2 class="text-center fw-bolder mb-2">
-      <img class="mb-3" src="/assets/images/applogo.png" style="width: 200px" />
+      <img
+        class="mb-3"
+        src="./assets/images/applogo.png"
+        style="width: 200px"
+      />
       <p>Welcome to {{ webName }}</p>
     </h2>
     <async
@@ -10,14 +14,29 @@
       style="min-height: 100px; display: flex"
       [overlay]="true"
     >
-      <div *ngIf="message" class="alert alert-warning" style="text-align: center" role="alert">
+      <div
+        *ngIf="message"
+        class="alert alert-warning"
+        style="text-align: center"
+        role="alert"
+      >
         {{ message }}
       </div>
       <div *ngIf="useEmulators">
         <div class="input-group">
-          <span class="input-group-text"><i class="fa-solid fa-envelope"></i></span>
+          <span class="input-group-text"
+            ><i class="fa-solid fa-envelope"></i
+          ></span>
           <div class="form-floating">
-            <input #emailF type="email" class="form-control" id="email" name="email" placeholder="name@example.com" required />
+            <input
+              #emailF
+              type="email"
+              class="form-control"
+              id="email"
+              name="email"
+              placeholder="name@example.com"
+              required
+            />
             <label for="email" class="form-label">Email Address</label>
           </div>
         </div>
@@ -27,7 +46,15 @@
             <i class="fa-solid fa-key"></i>
           </span>
           <div class="form-floating">
-            <input #passwordF type="password" class="form-control" id="pass" name="password" placeholder="Password" required />
+            <input
+              #passwordF
+              type="password"
+              class="form-control"
+              id="pass"
+              name="password"
+              placeholder="Password"
+              required
+            />
             <label for="pass" class="form-label">Password</label>
           </div>
         </div>
@@ -53,7 +80,11 @@
         </button>
       </div> -->
       <div class="container-fluid">
-        <button (click)="signIn('Google')" type="button" class="btn btn-light text-dark btn-lg border-secondary container-fluid rounded-5">
+        <button
+          (click)="signIn('Google')"
+          type="button"
+          class="btn btn-light text-dark btn-lg border-secondary container-fluid rounded-5"
+        >
           <i class="fa-brands fa-google"></i>
           <span class="text-center ms-2">Sign in with Google</span>
         </button>

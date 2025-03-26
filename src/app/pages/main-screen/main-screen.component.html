@@ -1,7 +1,8 @@
 <nav-bar></nav-bar>
 <div class="d-flex flex-column fullscreen bg-body-secondary">
   <div class="container-xl pt-3 mb-2 d-flex flex-column" style="flex-grow: 5">
-    @let podiumInSpotlightIndex = gameManager.podiumInSpotlightIndex|async;
+    @let podiumInSpotlightIndex = gameManager.podiumInSpotlightIndex|async; @let
+    curentGameState = (gameManager.curentGameState|async);
     <div class="mb-2">
       <div
         class="bg-body py-2 px-3 d-flex justify-content-between align-items-center rounded-2"
@@ -9,7 +10,7 @@
         <div>
           <label>Status</label>
           <h3 class="mb-0" style="margin-top: -5px">
-            {{ gameStateTitles[gameManager.curentGameState] ?? "Unknown" }}
+            {{ gameStateTitles[curentGameState] ?? "Unknown" }}
           </h3>
         </div>
         <div *ngIf="podiumInSpotlightIndex != null" class="text-center">
@@ -36,6 +37,14 @@
         Running In Relay Mode: Another Instance is Already Open, Please use the
         First Instance to Prevent Issues
       </div>
+      <div
+        *ngIf="serialServ.headlessMode"
+        class="bg-warning py-1 px-2 rounded-bottom-2"
+        style="margin-top: -5px"
+      >
+        Running In Headless Mode (FOR DEBUGGING ONLY): No Control Center Device
+        paired
+      </div>
     </div>
     <div
       cdkDropList
@@ -45,12 +54,11 @@
       class="row row-cols-lg-5 d-flex g-3 cdk-list align-content-center"
       style="flex-grow: 1"
     >
-      @let disableSpotlight = !disableSafteyReveal &&
-      (gameManager.curentGameState == GameState.SuspenseAns ||
-      gameManager.curentGameState == GameState.QuizReady);
+      @let disableSpotlight = !disableSafteyReveal && (curentGameState ==
+      GameState.SuspenseAns || curentGameState == GameState.QuizReady);
       <div
         *ngFor="
-          let item of gameManager.podiums | keyvalue;
+          let item of gameManager.podiums | async | keyvalue;
           let i = index;
           trackBy: identify
         "
@@ -73,27 +81,39 @@
             gameManager.spotLightPodium(item.key); alertDimmedPodium()
           "
           (onPointsChange)="pointsChange(i, $event)"
+          (onBtnPress)="gameManager.onBtnPress(i)"
+          [headlessMode]="serialServ.headlessMode"
         ></app-podium-item>
       </div>
     </div>
   </div>
   <div class="d-flex flex-column" style="min-height: 100%; flex-grow: 1">
     <div class="d-flex justify-content-between">
-      <button style="visibility: hidden" class="btn btn-danger">
-        <i class="fa-solid fa-arrows-rotate"></i> Re-Sync Points
-      </button>
-      <button style="visibility: hidden" class="btn btn-danger me-2">
-        <i class="fa-solid fa-arrows-rotate"></i> Re-Sync Points
-      </button>
-      <div class="d-flex justify-content-center align-content-bottom">
+      <div
+        class="d-flex justify-content-center align-content-start"
+        style="width: 50%"
+        style="width: 25%"
+      >
         <div
-          [ngStyle]="{
-            visibility:
-              gameManager.curentGameState !== GameState.QuizReady
-                ? 'hidden'
-                : 'visible'
+          [ngClass]="{
+            'quiz-ready': gameManager.logoMode,
+            'quiz-hidden': !gameManager.logoMode
           }"
-          class="bg-danger rounded-top-3 px-5 py-1"
+          class="armed-container bg-info rounded-top-3 px-3 pt-2"
+        >
+          <h5 class="mb-0">Logo Shown</h5>
+        </div>
+      </div>
+      <div
+        class="d-flex justify-content-center align-content-bottom"
+        style="width: 50%"
+      >
+        <div
+          [ngClass]="{
+            'quiz-ready': curentGameState === GameState.QuizReady,
+            'quiz-hidden': curentGameState !== GameState.QuizReady
+          }"
+          class="armed-container bg-danger rounded-top-3 px-5 py-1"
         >
           <h3
             class="mb-0"
@@ -107,19 +127,23 @@
           </h3>
         </div>
       </div>
-      <div>
-        <button (click)="gameManager.refresh()" class="btn btn-sm btn-danger me-2">
-          <i class="fa-solid fa-arrows-rotate"></i> Pts. Page
-        </button>
+
+      <div
+        style="width: 25%"
+        class="d-flex justify-content-end align-items-center"
+      >
         <button
-          class="btn btn-info btn-sm me-1"
-          (click)="gameManager.forceSync()"
+          (click)="gameManager.refresh()"
+          class="btn btn-sm btn-danger me-2"
         >
-          <i class="fa-solid fa-arrows-rotate"></i> Re-Sync Points
+          <i class="fa-solid fa-arrows-rotate"></i> Sync Pts.
         </button>
       </div>
     </div>
-    <div class="control-center bg-body" style="min-height: 100%; flex-grow: 1">
+    <div
+      class="control-center bg-body"
+      style="min-height: 100%; flex-grow: 1; z-index: 2"
+    >
       <div class="container-xl pt-3 px-3">
         <div class="row g-3">
           <div class="col-md-4">
@@ -173,6 +197,13 @@
                 </button> -->
                 <button
                   class="btn btn-primary"
+                  [disabled]="gameManager.isEdit"
+                  (click)="gameManager.setLogoMode(!gameManager.logoMode)"
+                >
+                  {{ gameManager.logoMode ? "Un-" : "" }}Fly Logo
+                </button>
+                <button
+                  class="btn btn-primary"
                   [disabled]="sfx.currentPlayingAudio == null"
                   (click)="sfx.stopAudio()"
                 >
@@ -203,24 +234,38 @@
                   Debugger {{ debugMode ? "On" : "Off" }}
                 </button>
               </div>
+              <div>
+                <button
+                  *ngIf="serialServ.headlessMode"
+                  class="btn btn-primary"
+                  (click)="gameManager.addPodiumHeadlessMode()"
+                >
+                  Add Podium
+                </button>
+              </div>
             </div>
-            <div><button *ngIf="debugMode"
-              class="btn btn-secondary"
-              (click)="gameManager.clearPodium()"
-            >
-              Clear Mem
-            </button></div>
+            <div>
+              <button
+                *ngIf="debugMode"
+                class="btn btn-secondary"
+                (click)="gameManager.clearMemory()"
+              >
+                Clear Mem
+              </button>
+            </div>
           </div>
           <hr class="d-block d-md-none" />
           <div class="col-md-4">
             <div class="row g-3">
-              @let disabledRevealAnswer = !disableSafteyReveal &&
-              (gameManager.curentGameState == GameState.QuizReady);
+              @let disableAnswers = !disableSafteyReveal && (curentGameState ==
+              GameState.QuizReady); @let disabledRevealAnswer =
+              !disableSafteyReveal &&( (curentGameState ==
+              GameState.QuizReady)|| podiumInSpotlightIndex == null );
               <div class="col-6">
                 <button
                   [disabled]="
                     disabledRevealAnswer &&
-                    gameManager.curentGameState != GameState.CorrectAns
+                    curentGameState != GameState.CorrectAns
                   "
                   class="btn btn-success w-100"
                   (click)="gameManager.correctAns(); alertDimmedPodium()"
@@ -232,7 +277,7 @@
                 <button
                   [disabled]="
                     disabledRevealAnswer &&
-                    gameManager.curentGameState != GameState.WrongAns
+                    curentGameState != GameState.WrongAns
                   "
                   class="btn btn-danger w-100"
                   (click)="gameManager.wrongAns(); alertDimmedPodium()"
@@ -240,20 +285,32 @@
                   WRONG
                 </button>
               </div>
+              <div class="col-12">
+                <button
+                  [disabled]="(gameManager.ansReveal | async) === null"
+                  class="btn btn-info w-100"
+                  (click)="gameManager.clearRevealAns()"
+                >
+                  Clear Reveal Ans Scoreboard
+                </button>
+              </div>
               <div>
                 <button
-                  [disabled]="disabledRevealAnswer"
+                  [disabled]="disableAnswers"
                   class="btn btn-secondary w-100"
                   (click)="gameManager.suspenseAns(); alertDimmedPodium()"
                 >
                   Suspense Answer
                 </button>
               </div>
-              <div>
+              <div
+                class="btn-group w-100 d-flex"
+                role="group"
+                aria-label="Basic example"
+              >
                 <button
-                  class="btn btn-warning w-100"
+                  class="btn btn-warning"
                   (click)="ready(); alertDimmedPodium()"
-                  style="font-weight: 600"
                 >
                   READY
                 </button>
@@ -270,7 +327,7 @@
           </div>
           <hr class="d-block d-md-none" />
           @let pointsConfig = gameManager.pointsConfig; @let btnPointsDisabled =
-          gameManager.curentGameState == GameState.QuizReady ||
+          curentGameState == GameState.QuizReady ||
           pointsConfig.selectedPodiumIndex == null ||
           pointsConfig.selectedPodiumIndex == 'null';
           <div class="col-md-4">
@@ -311,7 +368,7 @@
                   <option [value]="null">NONE SELECTED</option>
                   <option
                     *ngFor="
-                      let item of gameManager.podiums | keyvalue;
+                      let item of gameManager.podiums | async | keyvalue;
                       let i = index;
                       trackBy: identify
                     "
@@ -342,7 +399,7 @@
                     (gameManager.pointsConfig.pointsPreset.length ?? 0) <= 0
                   "
                 >
-                  <empty></empty>
+                  <h3 class="text-center">No Preset</h3>
                   <p class="text-center">
                     go to settings > points to add a preset
                   </p>

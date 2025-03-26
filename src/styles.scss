@@ -67,7 +67,7 @@ iframe body {
     -webkit-box-orient: vertical;
     white-space: break-spaces;
     max-width: 100%;
-    word-break: break-all;
+    word-break: break-word;
   }
 }
 /* Chrome, Safari, Edge, Opera */
@@ -152,13 +152,32 @@ apx-chart .apexcharts-tooltip {
   color: initial !important;
   border-color: var(--bs-border-color);
 }
+:root {
+  --scroll-font-size: 5rem;
+  --scroll-font-size-w: calc(var(--scroll-font-size) * 0.6);
+}
 
+.scroll-header {
+  margin: 0.1em 0;
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  width: fit-content;
+  min-width: fit-content;
+  font-size: var(--scroll-font-size);
+}
+
+.scroll-header + span {
+  display: block;
+  width: 100%;
+  text-align: right;
+}
 #number {
   position: relative;
   display: flex;
   width: 0;
   overflow: hidden;
-  height: 48px;
+  height: var(--scroll-font-size);
   transition: width 1.8s ease;
 }
 
@@ -168,20 +187,20 @@ apx-chart .apexcharts-tooltip {
   flex-direction: column;
   opacity: 0;
   flex-shrink: 2;
-  flex-basis: 48px;
+  flex-basis: var(--scroll-font-size);
   width: 1px;
   position: absolute;
   right: 0;
-  line-height: 48px;
+  line-height: var(--scroll-font-size);
   transition: all 2s ease;
 }
 
 .pod-item:not([style*="visibility: hidden"]) {
   #number > span.visible {
     position: static;
-    width: 30px;
+    max-width: var(--scroll-font-size-w);
+    width: var(--scroll-font-size-w);
     opacity: 1;
     flex-shrink: 1;
   }
 }
-

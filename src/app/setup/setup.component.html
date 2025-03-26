@@ -1,12 +1,52 @@
-@let connStatus = serialServ.connectionStatus|async;
-<p>{{ connStatus | titlecase }}</p>
-setup
-<button
-  class="btn btn-primary"
-  [disabled]="connStatus == 'connecting'"
-  (click)="initialize()"
->
-  {{connStatus == 'connecting'?'Connecting...':'Connect'}}
-</button>
-<button class="btn btn-primary" (click)="serialServ.requestPort()">requestPort</button>
-<a class="btn btn-primary" href="https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads" target="_blank">Download Drivers</a>
+<div style="height: 100vh" class="d-flex flex-column">
+  @let connStatus = serialServ.connectionStatus|async;
+  <div
+    class="text-center h-100 d-flex justify-content-center align-items-center"
+  >
+    <div>
+      <div class="mb-3">
+        <img style="width: 100px" src="./assets/images/applogo.png" />
+        <h4>Buzzer CC</h4>
+      </div>
+      <h1>
+        <i
+          class="fa-solid"
+          [ngClass]="connStatus == 'connecting' ? 'fa-gear fa-spin' : 'fa-plug'"
+        ></i>
+      </h1>
+      <h5>{{ connMsg[connStatus] | titlecase }}</h5>
+      <div class="mb-3">
+        <button
+          class="btn btn-primary me-2"
+          [disabled]="connStatus == 'connecting'"
+          (click)="initialize()"
+        >
+          Connect
+        </button>
+        <button
+          *ngIf="serialServ.serialSupport |async"
+          class="btn btn-primary me-2"
+          (click)="serialServ.requestPort()"
+        >
+          Request Port
+        </button>
+      </div>
+
+      <div class="">
+        <p>fresh install?</p>
+        <a
+          class="btn btn-primary btn-sm"
+          href="https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads"
+          target="_blank"
+          >Download Drivers</a
+        >
+      </div>
+    </div>
+  </div>
+  <button
+    class="btn btn-link btn-sm"
+    (click)="serialServ.setHeadlessMode(true)"
+  >
+    Headless Mode
+  </button>
+</div>

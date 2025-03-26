@@ -92,7 +92,7 @@ export class NavBarComponent implements OnInit {
     const url = this.router.serializeUrl(
       this.router.createUrlTree([navItem.route])
     );
-    window.open(url, '_blank');
+    window.open('#' + url, '_blank');
   }
   filterRoutes(navItem: NavItem[], user: any) {
     return navItem;

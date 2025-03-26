@@ -7,9 +7,9 @@ export class SettingsConfig {
   secondScrBkg: string = 'assets/images/sec_scr_bkg.jpg';
   secondScrTxtColor: string = '#FFFFFF';
   imgBorderColor: string = '#FFFFFF';
-  imgBkgColor: string = '#00000';
+  imgBkgColor: string = '#000000';
   prepTxt: string;
-  prepImg: string;
+  prepImg: string = 'assets/images/companyLogo.png';
   audio: Partial<AudioSettings & SoundEffectsSettings>;
 }
 export interface AudioSettings {
@@ -35,7 +35,6 @@ export class SettingsConfigService {
   channel: BroadcastChannel;
   constructor(
     private indexedDb: IndexedDbService,
-    private scoringService: ScoringService,
     private soundFX: SoundFXService
   ) {
     this.init();
@@ -48,10 +47,6 @@ export class SettingsConfigService {
         ...JSON.parse(await this.indexedDb.getItem('settings')),
       };
       this.soundFX.applyAllAudioVolume(this._settings?.audio);
-      const { audio, secondScrBkg, prepImg, ...other } = this._settings;
-      this.scoringService.textFormat.next(other);
-      this.scoringService.bkgImg.next(secondScrBkg);
-      this.scoringService.prepImg.next(prepImg);
     })();
   }
   setAudioSettings(key: string, volume: number) {
@@ -81,6 +76,9 @@ export class SettingsConfigService {
     this.indexedDb.setItem('settings', JSON.stringify(this._settings));
     this.sendSettingsConfig(this._settings);
   }
+  clear() {
+    this.indexedDb.clear();
+  }
   sendSettingsConfig(settings: Partial<SettingsConfig>) {
     if (settings?.secondScrBkg != null) {
       this.channel.postMessage({
@@ -98,7 +96,9 @@ export class SettingsConfigService {
 
     if (settings.secondScrTxtColor)
       payload['secondScrTxtColor'] = settings.secondScrTxtColor;
-    if (settings.imgBkgColor) payload['imgBkgColor'] = settings.imgBkgColor;
+    if (settings.imgBkgColor) {
+      payload['imgBkgColor'] = settings.imgBkgColor;
+    }
     if (settings.imgBorderColor)
       payload['imgBorderColor'] = settings.imgBorderColor;
     this.channel.postMessage({

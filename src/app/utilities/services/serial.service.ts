@@ -46,6 +46,7 @@ export enum SendCommands {
   PodiumColor,
   ClearPodium,
   VerboseMode,
+  SendDeviceInfo,
 }
 export enum ReceiveCommands {
   Acknowledge,
@@ -59,6 +60,7 @@ export enum ReceiveCommands {
   GameState,
   SpotLightPodium,
   PodiumBrightness,
+  DeviceInfo,
 }
 function charToCommand<T>(char: string, enumType: any): T | null {
   // Check if the character matches any value in the enum
@@ -92,6 +94,7 @@ export class SerialService {
   stream = this._stream.asObservable();
   serialSupport = new BehaviorSubject<boolean>(null);
   connectedSerialDevice: SerialDevice;
+  headlessMode = false;
   connectionStatus = new BehaviorSubject<ConnectionStatus>('disconnected');
   private serial: Serial;
   channel: BroadcastChannel;
@@ -101,6 +104,13 @@ export class SerialService {
   }
   private set isLeader(value) {
     this._isLeader = value;
+  }
+  setHeadlessMode(mode: boolean) {
+    this.headlessMode = mode;
+    if (this.headlessMode) {
+      this.connectionStatus.next('connected');
+      this.isLeader.next(true);
+    }
   }
   private channelMessage = new BehaviorSubject<InterConnectPacket>(null);
   constructor() {
@@ -150,6 +160,8 @@ export class SerialService {
       }
     });
     this.connectionStatus.asObservable().subscribe((conn) => {
+      if (conn == 'disconnected' || conn == 'disconnected-no-recon')
+        this.headlessMode = false;
       if (!this.isLeader.value) return;
       this.channel.postMessage({
         type: 'conn-status',
@@ -158,15 +170,15 @@ export class SerialService {
     });
   }
   async initializeSerial() {
-    //wait for the singleton check
+    //wait for the singleton checka
 
     const hasInstance = await this.checkInstances();
     this.isLeader.next(!hasInstance);
     if (hasInstance) {
       console.log('listening to master');
-
       return;
     }
+
     this.channel.postMessage({ type: 'leader-exists' });
     if (this.connectionStatus.value == 'connected')
       throw new SerialAlreadyConnected();
@@ -175,7 +187,12 @@ export class SerialService {
     this.serialSupport.next(serialSupported);
     if (!serialSupported) return;
     this.serial = await navigator.serial;
-    await this.connectToDevice();
+    try {
+      await this.connectToDevice();
+    } catch (err) {
+      if (!this.headlessMode) this.connectionStatus.next('disconnected');
+      throw err;
+    }
   }
   /**returns true when theres one */
   async checkInstances(): Promise<boolean> {
@@ -226,7 +243,11 @@ export class SerialService {
   } */
 
   async disconnect(recon: boolean = true) {
-    await this.connectedSerialDevice.close();
+    this.headlessMode = false;
+    try {
+      await this.connectedSerialDevice?.close();
+    } finally {
+    }
     //use different listener, prob use connectedSerialDevice
     this.connectionStatus.next(
       recon ? 'disconnected' : 'disconnected-no-recon'
@@ -242,21 +263,24 @@ export class SerialService {
   sub: Subscription;
   async connectToDevice() {
     const ports = await this.serial.getPorts();
-    console.log(`available ports: ${ports.length}`);
+    if (ports.length == 0) throw new NoValidDevices();
     const serialDevices = await Promise.all(
       ports?.map((p) => new SerialDevice(p))
     );
     try {
-      const testConnections = (
-        await Promise.all(serialDevices?.map((p) => this.testDevice(p)))
-      ).filter((f) => {
-        return f.status;
-      });
-      console.log(`successful devices: ${testConnections.length}`);
-      const validConncetion = testConnections.pop();
-      const hasConnection = validConncetion != null;
+      const firstSuccessfulConnection = await Promise.race(
+        serialDevices.map(async (device) => {
+          const result = await this.testDevice(device);
+          if (!result.status) {
+            // If status is false, throw an error to be caught by Promise.race
+            throw new Error('Connection failed');
+          }
+          return result;
+        })
+      );
+      const validConncetion = firstSuccessfulConnection;
 
-      if (!hasConnection) throw new NoValidConnections();
+      if (!firstSuccessfulConnection) throw new NoValidConnections();
       this.connectedSerialDevice = validConncetion.device;
       this.connectedSerialDevice.ondisconnect = () => {
         this.disconnect();
@@ -282,12 +306,13 @@ export class SerialService {
       });
       this.connectionStatus.next('connected');
     } catch (err) {
-      this.connectionStatus.next('disconnected');
+      if (!this.headlessMode) this.connectionStatus.next('disconnected');
       this.isLeader.next(null);
       this.sub?.unsubscribe();
       for (let device of serialDevices) {
         device.close();
       }
+      throw err;
     }
 
     /* const hasConnections = testConnections.filter((f) => f.status == true);
@@ -461,6 +486,7 @@ export class SerialService {
       idempotencyToken = this.currentidempotencyToken;
       this.currentidempotencyToken++;
     }
+    if (this.headlessMode) return;
     const wr = `${+idempotencyToken}:${command} ${payload ?? ''}\n`;
 
     this.serialWriteQueue.add(idempotencyToken);
@@ -500,9 +526,18 @@ export class SerialService {
     }
   }
 }
-export class SerialAlreadyConnected extends Error {}
-export class SerialConnecting extends Error {}
-export class NoValidConnections extends Error {}
+export class SerialAlreadyConnected extends Error {
+  override message: string = 'Alreay Connected to Device';
+}
+export class SerialConnecting extends Error {
+  override message: string = 'Connecting to Device';
+}
+export class NoValidConnections extends Error {
+  override message: string = 'No Valid Connections Made';
+}
+export class NoValidDevices extends Error {
+  override message: string = 'No Devices Found';
+}
 /* const listener = this.listenToDevice(port);
 const command = await firstValueFrom(
   listener.data.pipe(

@@ -45,6 +45,7 @@ const ledStateToUI: Partial<{
 export class PodiumItemComponent implements OnInit {
   ordinalIndicators = ordinalIndicators;
   @Input() debug: boolean = false;
+  @Input() headlessMode: boolean = false;
   @Input() disableBtnSafety: boolean = true;
   @Input() editPoints: boolean = false;
   @Input() disableSpotlightBtn: boolean = false;
@@ -72,6 +73,7 @@ export class PodiumItemComponent implements OnInit {
   @Output() onPodiumChange = new EventEmitter<Podium>();
   @Output() onPodiumRemove = new EventEmitter<void>();
   @Output() onPointsChange = new EventEmitter<number>();
+  @Output() onBtnPress = new EventEmitter<void>();
   get readableIndex() {
     return this.index + 1;
   }
@@ -108,6 +110,12 @@ export class PodiumItemComponent implements OnInit {
   pointsChange(event: Event) {
     const value = event.target['value'] ?? 0;
     this.onPointsChange.emit(+value);
+  }
+  titleChange(event: Event) {
+    const value = event?.target?.['value'] as string;
+    const title = (value.length ?? 0) <= 0 ? null : value.trim();
+    this.podium.title = title;
+    this.podiumChanged();
   }
   get status() {
     return {

@@ -9,7 +9,7 @@ export class ScrollingNumbersDirective implements OnInit {
   ngOnInit(): void {
     this.setup();
     this.init = true;
-    if(this.needUpdate){
+    if (this.needUpdate) {
       this.update();
     }
   }
@@ -22,21 +22,21 @@ export class ScrollingNumbersDirective implements OnInit {
   }
   @Input() public set value(value: string) {
     this._value = value;
-    console.log(this._value)
-    if(value == '0') console.trace();
-    if (this.init) this.update();else this.needUpdate = true;
+    console.log(this._value);
+    if (this.init) this.update();
+    else this.needUpdate = true;
   }
   async scrollNumber(digits) {
+    const fontSize = this.getCssVariable('--scroll-font-size-w');
     this.el.nativeElement
       .querySelectorAll('span[data-value]')
       .forEach((tick, i) => {
-
         tick['style'].transform = `translateY(-${
           100 * (digits[i] == '-' ? 0 : parseInt(digits[i]) + 1)
         }%)`;
       });
     setTimeout(() => {
-      this.el.nativeElement['style'].width = `${digits.length * 30}px`;
+      this.el.nativeElement['style'].width = `calc(${digits.length}*${fontSize})`;
     }, 100);
   }
 
@@ -60,8 +60,11 @@ export class ScrollingNumbersDirective implements OnInit {
       },
       fresh ? 0 : 1
     );
-  }
 
+  }
+  getCssVariable(variable: string): string {
+    return getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
+  }
   removeDigit() {
     const firstDigit = this.el.nativeElement.lastElementChild;
 
@@ -69,6 +72,13 @@ export class ScrollingNumbersDirective implements OnInit {
     setTimeout(() => {
       firstDigit.remove();
     }, 1);
+    /* setTimeout(() => {
+      firstDigit.classList.remove('visible');
+    }, 1000);
+
+    setTimeout(() => {
+      firstDigit.remove();
+    }, 1); */
   }
 
   setup() {
@@ -80,9 +90,8 @@ export class ScrollingNumbersDirective implements OnInit {
       this.addDigit('0', true);
     }
 
-    this.scrollNumber(['0']);
 
-    setTimeout(() => this.scrollNumber(digits), 2000);
+    setTimeout(() => this.scrollNumber(digits), 1);
     this.currNum = this.value;
   }
 

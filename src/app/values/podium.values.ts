@@ -7,9 +7,11 @@ export class Podium {
   battLevel:number;
   battVoltage:number;
   isCharging:boolean;
-  macAddr:string;
   photo:string;
   scoring:{points:number,streak:number} = {points:0,streak:0}
+  constructor(public macAddr:string){
+
+  }
 }
 export const dnrSeverity = [
   'connected',

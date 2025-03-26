@@ -1,0 +1,125 @@
+<div *ngIf="!previewMode" id="title-bar" class="title-bar d-flex">
+  <div id="title">Buzzer CC</div>
+  <div id="title-bar-btns">
+    <button id="close-btn" class="btn btn-sm" (click)="reload()">
+      <i class="fa-solid fa-arrows-rotate"></i>
+    </button>
+    <button id="close-btn" class="btn btn-sm" (click)="fullscreen()">
+      <i class="fa-solid fa-expand"></i>
+    </button>
+    <button
+      id="close-btn"
+      class="btn btn-sm btn-danger"
+      (click)="closeWindow()"
+    >
+      <i class="fa fa-xmark"></i>
+    </button>
+  </div>
+</div>
+<div
+  class="h-100 position-relative"
+  [ngStyle]="{ 'background-image': 'url(' + (score.bkgImg | async) + ')' }"
+  style="
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+  "
+>
+  @let txtFormat = score?.textFormat | async; @let txtFormatStyle = { 'color':
+  txtFormat?.secondScrTxtColor??'#FFFFFF'};
+  <div
+    class="main-window text-white position-absolute top-0 start-0 bottom-0 end-0 d-flex flex-column justify-content-center align-items-center"
+    [ngStyle]="{ opacity: (!previewMode && score.logoMode | async) ? 1 : 0 }"
+  >
+    @let prepImg = score.prepImg|async;
+    <img
+      class="mb-3"
+      *ngIf="prepImg"
+      [src]="prepImg"
+      style="max-width: 30vw; max-height: 30vh"
+    />
+    <h1 [ngStyle]="txtFormatStyle">Preparing</h1>
+    <div
+      class="snippet"
+      data-title="dot-pulse"
+      [ngStyle]="{
+        '--background-color': txtFormat?.secondScrTxtColor || '#FFFFFF'
+      }"
+    >
+      <div class="stage">
+        <div class="dot-pulse"></div>
+      </div>
+    </div>
+  </div>
+
+  <div
+    class="main-window row g-2 py-5 px-3 m-0 rol-cols-5 h-100 position-relative"
+    [ngStyle]="{ opacity: (!previewMode && score.logoMode | async) ? 0 : 1 }"
+  >
+    <ng-container
+      *ngFor="let item of podiums; let i = index; identifyBy: identify"
+    >
+      <div
+        *animate="'1000ms ease-in-out'"
+        class="col col-sp mt-0 pod-item"
+        style="
+          flex: 0 0 auto;
+          width: 20%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          top: 0px !important;
+        "
+      >
+        <div class="d-flex flex-column align-items-center mb-3">
+          <img
+            class="rounded-2"
+            [src]="item.value.photo"
+            [defaultImage]="'profile'"
+            style="
+              max-width: 80%;
+              width: 500px;
+              aspect-ratio: 1/1;
+              max-height: 500px;
+              object-fit: cover;
+              object-position: center;
+              box-shadow: 0 0 0 10px var(--boder-color);
+              background: var(--background-color);
+            "
+            [ngStyle]="{
+            '--background-color': txtFormat?.imgBkgColor || '#FFFFFF',
+            '--boder-color': txtFormat?.imgBorderColor || '#000000'
+          }"
+          />
+        </div>
+        <h1
+          class="text-clamp-1 m-0 text-center text-shadow"
+          [ngStyle]="txtFormatStyle"
+        >
+          {{ item.value.title ?? "PODIUM " + (item.key + 1) }}
+        </h1>
+        @let points =item.value.scoring?.points ;
+        <div class="text-center d-flex flex-column">
+          <h2
+            class="mb-0 text-shadow text-center"
+            [ngStyle]="txtFormatStyle"
+            style="justify-content: center"
+          >
+            <span
+              id="number"
+              ScrollingNumbers
+              [value]="''+(points ?? 0)"
+            ></span>
+          </h2>
+          <label
+            style="margin-top: -5px"
+            class="text-shadow"
+            [ngStyle]="txtFormatStyle"
+            >Points</label
+          >
+        </div>
+      </div></ng-container
+    >
+  </div>
+</div>
