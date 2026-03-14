@@ -56,8 +56,10 @@ export class SerialDevice {
       this.writableStreamClosed = this.textEncoder.readable.pipeTo(
         this.port.writable
       );
+      // Cast TextDecoderStream.writable to WritableStream<Uint8Array> to
+      // satisfy the TypeScript pipeTo signature (platform lib mismatch).
       this.readableStreamClosed = this.port.readable.pipeTo(
-        this.textDecoder.writable
+        this.textDecoder.writable as unknown as WritableStream<Uint8Array>
       );
 
       // Get reader and writer
