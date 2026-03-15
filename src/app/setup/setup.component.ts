@@ -1,4 +1,9 @@
-import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  signal,
+} from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   ConnectionStatus,
@@ -7,6 +12,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { filter, first, firstValueFrom, tap } from 'rxjs';
 import { ToastService } from '../utilities/services/toast/toast.service';
+import { ElectronService } from '../utilities/services/ElectronService.service';
 /**TODO:
  * detect browser WebSerial support
  *
@@ -33,9 +39,13 @@ export class SetupComponent implements OnInit {
   constructor(
     public serialServ: SerialService,
     private router: Router,
+    electronServ: ElectronService,
     private route: ActivatedRoute,
-    private toast: ToastService
-  ) {}
+    private toast: ToastService,
+  ) {
+    this.isElectronApp.set(electronServ.isElectronApp);
+  }
+  isElectronApp = signal(false);
   ngOnInit(): void {
     this.waitForConnection();
     this.initialize(true);
@@ -45,8 +55,8 @@ export class SetupComponent implements OnInit {
       this.serialServ.connectionStatus.pipe(
         tap((test) => console.log(test)),
         filter((status) => status === 'connected'),
-        first()
-      )
+        first(),
+      ),
     );
     this.router.navigate([this.route.snapshot.queryParams?.['from'] ?? 'main']);
   }

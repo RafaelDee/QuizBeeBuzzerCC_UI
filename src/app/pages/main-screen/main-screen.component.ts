@@ -1,7 +1,13 @@
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  computed,
+  OnInit,
+  signal,
+} from '@angular/core';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { BrowserSerial } from 'browser-serial';
-import { CommonModule } from '@angular/common';
+import { CommonModule, NgClass } from '@angular/common';
 import {
   CdkDragDrop,
   CdkDrag,
@@ -34,7 +40,6 @@ import { EmptyContentComponent } from '../../templates/async/empty/empty/empty-c
   imports: [
     RouterOutlet,
     RouterLink,
-    CommonModule,
     PodiumItemComponent,
     CdkDropList,
     CdkDrag,
@@ -42,6 +47,8 @@ import { EmptyContentComponent } from '../../templates/async/empty/empty/empty-c
     NavBarComponent,
     FormsModule,
     EmptyContentComponent,
+    CommonModule,
+    NgClass,
   ],
   templateUrl: './main-screen.component.html',
   styleUrls: ['./main-screen.component.scss'],
@@ -54,6 +61,7 @@ export class MainScreenComponent implements OnInit {
   gameStateTitles = gameStateTitles;
   debugMode = false;
   disableSafteyReveal = false;
+  private editv2 = signal(false);
   private _edit = false;
   public get edit() {
     return this._edit;
@@ -69,11 +77,15 @@ export class MainScreenComponent implements OnInit {
     public serialServ: SerialService,
     public gameManager: GameManagerService,
     public sfx: SoundFXService,
-    private modal: ModalService,cdr:ChangeDetectorRef,
-    private toast: ToastService,private router:Router
-  ) {}
+    private modal: ModalService,
+    cdr: ChangeDetectorRef,
+    private toast: ToastService,
+    private router: Router,
+  ) {
+    //listen to editv2
+  }
   ngOnInit(): void {
-    if(!MainScreenComponent.onetime){
+    if (!MainScreenComponent.onetime) {
       this.gameManager.sendSummary();
       MainScreenComponent.onetime = true;
     }
@@ -84,7 +96,8 @@ export class MainScreenComponent implements OnInit {
       }
     });
     this.gameManager.editorMode(false);
-    (()=>{})();
+    (() => {})();
+    this.gameManager.sendSummary();
   }
 
   setBrightness(event: Event) {
@@ -138,7 +151,7 @@ export class MainScreenComponent implements OnInit {
       'Clearing Points',
       `are you sure you want to <b class="text-danger">Clear Points</b>?`,
       { title: 'Yes', params: { color: 'danger', dismiss: true } },
-      { title: 'No', params: { dismiss: true } }
+      { title: 'No', params: { dismiss: true } },
     );
     this.gameManager.clearPodiumPoints();
   }
@@ -148,13 +161,12 @@ export class MainScreenComponent implements OnInit {
       'Disconnecting',
       `are you sure you want to <b class="text-danger">disconnect</b>?`,
       { title: 'Disconnect', params: { color: 'danger', dismiss: true } },
-      { title: 'No', params: { dismiss: true } }
+      { title: 'No', params: { dismiss: true } },
     );
-    if(this.serialServ.headlessMode){
+    if (this.serialServ.headlessMode) {
       this.router.navigate(['/']);
     }
     this.serialServ.disconnect(false);
-
   }
   pointsChange(index: number, value: number) {
     this.gameManager.pointsChange(index, value);
@@ -165,7 +177,7 @@ export class MainScreenComponent implements OnInit {
       this.toast.showSimple(
         'Reminder',
         `The Podium Brightness is Dim! (at ${brightnessPrc}%)`,
-        'warning'
+        'warning',
       );
     }
   }

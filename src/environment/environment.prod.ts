@@ -1,5 +1,5 @@
 export const environment = {
-  version: '1.4-stable',
+  version: '1.6-stable',
   //handling db version changes should be done by
   // server
   // a dbVersionHandler not per object

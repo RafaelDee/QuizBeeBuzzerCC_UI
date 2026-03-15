@@ -72,7 +72,10 @@ export class SecondScreenComponent implements OnInit, AfterViewInit {
   sub: Subscription;
   //podiumsCache: { key: number; value: Podium }[] = [];
   private resizeSubscription!: Subscription;
-  constructor(public score: ScoringService, private cdr: ChangeDetectorRef) {
+  constructor(
+    public score: ScoringService,
+    private cdr: ChangeDetectorRef,
+  ) {
     this.resizeSubscription = fromEvent(window, 'resize')
       .pipe(debounceTime(500)) // Adjust debounce time as needed
       .subscribe(() => {
@@ -87,6 +90,7 @@ export class SecondScreenComponent implements OnInit, AfterViewInit {
   }
   async ngAfterViewInit(): Promise<void> {
     await asyncDelay(1000);
+    this.items.forEach((x) => x.animateGo());
     //this.podiumsSub.next(this.podiums);d
   }
   closeWindow() {
@@ -146,7 +150,7 @@ export class SecondScreenComponent implements OnInit, AfterViewInit {
     asd: {
       key: number;
       value: Podium;
-    }[]
+    }[],
   ) {
     //debugger;
     if ((this.podiums?.length ?? 0) == 0) {

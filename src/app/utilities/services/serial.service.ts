@@ -105,6 +105,7 @@ export class SerialService {
   private set isLeader(value) {
     this._isLeader = value;
   }
+
   setHeadlessMode(mode: boolean) {
     this.headlessMode = mode;
     if (this.headlessMode) {
@@ -154,7 +155,7 @@ export class SerialService {
           this.writeToDevice(
             this.connectedSerialDevice,
             msg.payload.command,
-            msg.payload.payload
+            msg.payload.payload,
           );
           break;
       }
@@ -209,8 +210,8 @@ export class SerialService {
         await firstValueFrom(
           this.channelMessage.pipe(
             skip(1),
-            filter((f) => f != null && f.type === 'leader-exists')
-          )
+            filter((f) => f != null && f.type === 'leader-exists'),
+          ),
         );
 
         console.log('leader exist');
@@ -250,7 +251,7 @@ export class SerialService {
     }
     //use different listener, prob use connectedSerialDevice
     this.connectionStatus.next(
-      recon ? 'disconnected' : 'disconnected-no-recon'
+      recon ? 'disconnected' : 'disconnected-no-recon',
     );
   }
 
@@ -265,7 +266,7 @@ export class SerialService {
     const ports = await this.serial.getPorts();
     if (ports.length == 0) throw new NoValidDevices();
     const serialDevices = await Promise.all(
-      ports?.map((p) => new SerialDevice(p))
+      ports?.map((p) => new SerialDevice(p)),
     );
     try {
       const firstSuccessfulConnection = await Promise.race(
@@ -276,7 +277,7 @@ export class SerialService {
             throw new Error('Connection failed');
           }
           return result;
-        })
+        }),
       );
       const validConncetion = firstSuccessfulConnection;
 
@@ -295,7 +296,7 @@ export class SerialService {
         } else {
           await this.sendAcknowledge(
             validConncetion.device,
-            command.idempotencyToken
+            command.idempotencyToken,
           );
         }
         this.channel.postMessage({
@@ -336,7 +337,7 @@ export class SerialService {
       SendCommands.Acknowledge,
       null,
       idempotencyToken,
-      false
+      false,
     );
   }
   parseCommand(stream: string): {
@@ -374,8 +375,8 @@ export class SerialService {
     }
     console.log(
       `command: ${ReceiveCommands[command]} payload: ${cmd.substring(
-        cmdIndex + 1
-      )}`
+        cmdIndex + 1,
+      )}`,
     );
     return {
       command: command,
@@ -395,7 +396,7 @@ export class SerialService {
     this._currentidempotencyToken = value;
   }
   async testDevice(
-    device: SerialDevice
+    device: SerialDevice,
   ): Promise<{ device: SerialDevice; status: boolean }> {
     let sub: Subscription;
     try {
@@ -457,14 +458,14 @@ export class SerialService {
     command: SendCommands,
     payload?: string,
     idempotencyToken?: number,
-    retry: boolean = true
+    retry: boolean = true,
   ) {
     await this.writeToDevice(
       this.connectedSerialDevice,
       command,
       payload,
       idempotencyToken,
-      retry
+      retry,
     );
   }
   serialWriteQueue: Set<number> = new Set();
@@ -473,7 +474,7 @@ export class SerialService {
     command: SendCommands,
     payload?: string,
     idempotencyToken: number = null,
-    retry: boolean = true
+    retry: boolean = true,
   ) {
     if (!this.isLeader.value) {
       this.channel.postMessage({
@@ -495,7 +496,7 @@ export class SerialService {
       console.log(
         `Writing to device: "${wr}" or ${idempotencyToken}: ${
           SendCommands[command]
-        } ${payload != null ? payload : ''}`
+        } ${payload != null ? payload : ''}`,
       );
       await device.write(wr);
       await asyncDelay(100);
@@ -507,7 +508,7 @@ export class SerialService {
     );
     if (attempts > 3 && this.serialWriteQueue.has(idempotencyToken)) {
       console.error(
-        new Error('Failed to Send message Token:' + idempotencyToken)
+        new Error('Failed to Send message Token:' + idempotencyToken),
       );
     }
     this.serialWriteQueue.delete(idempotencyToken);

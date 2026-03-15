@@ -1,8 +1,8 @@
 <nav-bar></nav-bar>
 <div class="d-flex flex-column fullscreen bg-body-secondary">
   <div class="container-xl pt-3 mb-2 d-flex flex-column" style="flex-grow: 5">
-    @let podiumInSpotlightIndex = gameManager.podiumInSpotlightIndex|async; @let
-    curentGameState = (gameManager.curentGameState|async);
+    @let podiumInSpotlightIndex = gameManager.podiumInSpotlightIndex | async;
+    @let curentGameState = gameManager.curentGameState | async;
     <div class="mb-2">
       <div
         class="bg-body py-2 px-3 d-flex justify-content-between align-items-center rounded-2"
@@ -54,37 +54,40 @@
       class="row row-cols-lg-5 d-flex g-3 cdk-list align-content-center"
       style="flex-grow: 1"
     >
-      @let disableSpotlight = !disableSafteyReveal && (curentGameState ==
-      GameState.SuspenseAns || curentGameState == GameState.QuizReady);
-      <div
-        *ngFor="
-          let item of gameManager.podiums | async | keyvalue;
-          let i = index;
-          trackBy: identify
-        "
-        class="cdk-item col-6 col-sm-4 col-md-3 col-lg-sp"
-        cdkDrag
-        [cdkDragDisabled]="!edit"
-      >
-        <app-podium-item
-          [disableSpotlightBtn]="disableSpotlight || edit"
-          [editPoints]="edit"
-          [edit]="edit"
-          [debug]="debugMode"
-          [podiumPlacement]="gameManager.buttonPlacing[i]"
-          [podium]="item.value"
-          [index]="i"
-          [allowNegativePoints]="pointsConfig.allowNegatives"
-          [disableBtnSafety]="disableSafteyReveal"
-          (onPodiumChange)="onPodiumChange($event, i)"
-          (onSpotlight)="
-            gameManager.spotLightPodium(item.key); alertDimmedPodium()
-          "
-          (onPointsChange)="pointsChange(i, $event)"
-          (onBtnPress)="gameManager.onBtnPress(i)"
-          [headlessMode]="serialServ.headlessMode"
-        ></app-podium-item>
-      </div>
+      @let disableSpotlight =
+        !disableSafteyReveal &&
+        (curentGameState == GameState.SuspenseAns ||
+          curentGameState == GameState.QuizReady);
+      @for (
+        item of gameManager.podiums() | keyvalue;
+        track item.key;
+        let i = $index
+      ) {
+        <div
+          class="cdk-item col-6 col-sm-4 col-md-3 col-lg-sp"
+          cdkDrag
+          [cdkDragDisabled]="!edit"
+        >
+          <app-podium-item
+            [disableSpotlightBtn]="disableSpotlight || edit"
+            [editPoints]="edit"
+            [edit]="edit"
+            [debug]="debugMode"
+            [podiumPlacement]="gameManager.buttonPlacing[i]"
+            [podium]="item.value"
+            [index]="i"
+            [allowNegativePoints]="pointsConfig.allowNegatives"
+            [disableBtnSafety]="disableSafteyReveal"
+            (onPodiumChange)="onPodiumChange($event, i)"
+            (onSpotlight)="
+              gameManager.spotLightPodium(item.key); alertDimmedPodium()
+            "
+            (onPointsChange)="pointsChange(i, $event)"
+            (onBtnPress)="gameManager.onBtnPress(i)"
+            [headlessMode]="serialServ.headlessMode"
+          ></app-podium-item>
+        </div>
+      }
     </div>
   </div>
   <div class="d-flex flex-column" style="min-height: 100%; flex-grow: 1">
@@ -97,7 +100,7 @@
         <div
           [ngClass]="{
             'quiz-ready': gameManager.logoMode,
-            'quiz-hidden': !gameManager.logoMode
+            'quiz-hidden': !gameManager.logoMode,
           }"
           class="armed-container bg-info rounded-top-3 px-3 pt-2"
         >
@@ -111,7 +114,7 @@
         <div
           [ngClass]="{
             'quiz-ready': curentGameState === GameState.QuizReady,
-            'quiz-hidden': curentGameState !== GameState.QuizReady
+            'quiz-hidden': curentGameState !== GameState.QuizReady,
           }"
           class="armed-container bg-danger rounded-top-3 px-5 py-1"
         >
@@ -150,8 +153,8 @@
             <div class="row g-3">
               <div class="mb-3">
                 <label for="customRange1" class="form-label">Brightness</label>
-                @let brightness = +(gameManager.brightnessFce/2.55|
-                number:'1.0-0');
+                @let brightness =
+                  +(gameManager.brightnessFce / 2.55 | number: "1.0-0");
                 <div class="d-flex align-items-center">
                   <h5
                     class="mb-0 me-2"
@@ -220,7 +223,7 @@
                 </button>
                 <button
                   [ngStyle]="{
-                    visibility: debugMode ? 'visible' : 'hidden'
+                    visibility: debugMode ? 'visible' : 'hidden',
                   }"
                   class="btn btn-primary"
                   (click)="gameManager.sendSummary(); alertDimmedPodium()"
@@ -257,10 +260,12 @@
           <hr class="d-block d-md-none" />
           <div class="col-md-4">
             <div class="row g-3">
-              @let disableAnswers = !disableSafteyReveal && (curentGameState ==
-              GameState.QuizReady); @let disabledRevealAnswer =
-              !disableSafteyReveal &&( (curentGameState ==
-              GameState.QuizReady)|| podiumInSpotlightIndex == null );
+              @let disableAnswers =
+                !disableSafteyReveal && curentGameState == GameState.QuizReady;
+              @let disabledRevealAnswer =
+                !disableSafteyReveal &&
+                (curentGameState == GameState.QuizReady ||
+                  podiumInSpotlightIndex == null);
               <div class="col-6">
                 <button
                   [disabled]="
@@ -291,7 +296,15 @@
                   class="btn btn-info w-100"
                   (click)="gameManager.clearRevealAns()"
                 >
-                  Clear Reveal Ans Scoreboard
+                  Clear
+                  {{
+                    curentGameState == GameState.WrongAns
+                      ? "Wrong"
+                      : curentGameState == GameState.CorrectAns
+                        ? "Correct"
+                        : "Reveal"
+                  }}
+                  Mark @ Scoreboard
                 </button>
               </div>
               <div>
@@ -312,7 +325,7 @@
                   class="btn btn-warning"
                   (click)="ready(); alertDimmedPodium()"
                 >
-                  READY
+                  READY (ARM PODIUM)
                 </button>
               </div>
               <div>
@@ -326,10 +339,11 @@
             </div>
           </div>
           <hr class="d-block d-md-none" />
-          @let pointsConfig = gameManager.pointsConfig; @let btnPointsDisabled =
-          curentGameState == GameState.QuizReady ||
-          pointsConfig.selectedPodiumIndex == null ||
-          pointsConfig.selectedPodiumIndex == 'null';
+          @let pointsConfig = gameManager.pointsConfig;
+          @let btnPointsDisabled =
+            curentGameState == GameState.QuizReady ||
+            pointsConfig.selectedPodiumIndex == null ||
+            pointsConfig.selectedPodiumIndex == "null";
           <div class="col-md-4">
             <div class="row gx-4 gy-2">
               <div class="d-flex justify-content-between">
@@ -366,16 +380,15 @@
                   [(ngModel)]="pointsConfig.selectedPodiumIndex"
                 >
                   <option [value]="null">NONE SELECTED</option>
-                  <option
-                    *ngFor="
-                      let item of gameManager.podiums | async | keyvalue;
-                      let i = index;
-                      trackBy: identify
-                    "
-                    [value]="i"
-                  >
-                    {{ item.value?.title ?? "Podium " + (i + 1) }}
-                  </option>
+                  @for (
+                    item of gameManager.podiums() | keyvalue;
+                    track item.key;
+                    let i = $index
+                  ) {
+                    <option [value]="i">
+                      {{ item.value?.title ?? "Podium " + (i + 1) }}
+                    </option>
+                  }
                 </select>
                 <button
                   class="btn"
@@ -405,20 +418,20 @@
                   </p>
                 </div>
 
-                <div
-                  class="col-6"
-                  *ngFor="
-                    let points of pointsConfig.pointsPreset | slice : 0 : 6
-                  "
-                >
-                  <button
-                    [disabled]="btnPointsDisabled"
-                    class="btn btn-secondary w-100"
-                    (click)="pointsConfig.pointsInput = points"
-                  >
-                    {{ points }}
-                  </button>
-                </div>
+                @for (
+                  points of pointsConfig.pointsPreset | slice: 0 : 6;
+                  track $index
+                ) {
+                  <div class="col-6">
+                    <button
+                      [disabled]="btnPointsDisabled"
+                      class="btn btn-secondary w-100"
+                      (click)="pointsConfig.pointsInput = points"
+                    >
+                      {{ points }}
+                    </button>
+                  </div>
+                }
               </div>
 
               <div class="input-group">

@@ -1,5 +1,5 @@
 <div style="height: 100vh" class="d-flex flex-column">
-  @let connStatus = serialServ.connectionStatus|async;
+  @let connStatus = serialServ.connectionStatus | async;
   <div
     class="text-center h-100 d-flex justify-content-center align-items-center"
   >
@@ -23,17 +23,18 @@
         >
           Connect
         </button>
-        <button
-          *ngIf="serialServ.serialSupport |async"
-          class="btn btn-primary me-2"
-          (click)="serialServ.requestPort()"
-        >
-          Request Port
-        </button>
+        @if ((serialServ.serialSupport | async) && !isElectronApp()) {
+          <button
+            class="btn btn-primary me-2"
+            (click)="serialServ.requestPort()"
+          >
+            Request Port
+          </button>
+        }
       </div>
 
       <div class="">
-        <p>fresh install?</p>
+        <p>new device or can't connect?</p>
         <a
           class="btn btn-primary btn-sm"
           href="https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads"

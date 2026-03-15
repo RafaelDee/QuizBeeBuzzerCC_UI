@@ -55,9 +55,9 @@ import { SimpleModalHeaderComponent } from '../../modal-header/simple-header.com
                   [multiple]="multiple ?? false"
                 />
                 <i class="fas fa-file-upload fa-2x mb-2 d-block"></i>
-                <span class="small"
+                <span class="small text-center"
                   >drop file here <br />
-                  (Click to Upload)</span
+                  (Click to Upload) <br/> DO NOT UPLOAD HI-RES IMAGES!</span
                 >
               </div>
             </ng-template>

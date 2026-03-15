@@ -20,6 +20,8 @@ import { EmptyContentComponent } from '../templates/async/empty/empty/empty-cont
 import { AdvancedImgDirective } from '../utilities/directives/advanced-img.directive';
 import { SettingsConfigService } from '../utilities/services/settings-config.service';
 import { SimpleModalComponent } from '../utilities/modal/modal-component/simple-modal.component';
+import { SerialService } from '../utilities/services/serial.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-settings',
@@ -43,7 +45,9 @@ export class SettingsComponent implements OnDestroy, OnInit {
     public soundFx: SoundFXService,
     private modal: ModalService,
     public gameManager: GameManagerService,
-    public settingsServ: SettingsConfigService
+    public settingsServ: SettingsConfigService,
+    private serialServ: SerialService,
+    private router: Router,
   ) {
     this.gameManager.editorMode(true);
   }
@@ -59,10 +63,12 @@ export class SettingsComponent implements OnDestroy, OnInit {
       'Clearing Memory',
       `are you sure you want to <b class="text-danger">Clear Memory</b>`,
       { title: 'Clear', params: { color: 'danger', dismiss: true } },
-      { title: 'Cancel', params: { dismiss: true } }
+      { title: 'Cancel', params: { dismiss: true } },
     );
     this.gameManager.clearMemory();
     this.settingsServ.clear();
+    this.router.navigate(['/']);
+    this.serialServ.disconnect(false);
   }
   uploadImage(id: string) {
     const modalRef = this.modal.open(FileManagerModalComponent, {
@@ -84,7 +90,7 @@ export class SettingsComponent implements OnDestroy, OnInit {
           //this.podium.photo = base64String;
           this.settingsServ.setSettings({ [id]: base64String });
         },
-        false
+        false,
       );
       modalRef.close();
     });
